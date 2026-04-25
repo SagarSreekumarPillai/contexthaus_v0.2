@@ -31,10 +31,12 @@ app.add_middleware(
 from app.api.properties import router as properties_router
 from app.api.ingest import router as ingest_router
 from app.api.analytics import router as analytics_router
+from app.api.vendors import router as vendors_router
 
 app.include_router(properties_router, prefix="/api/properties", tags=["properties"])
 app.include_router(ingest_router, prefix="/api/ingest", tags=["ingest"])
 app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(vendors_router, prefix="/api/vendors", tags=["vendors"])
 
 
 @app.get("/health")
