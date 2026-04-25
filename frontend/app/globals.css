@@ -1,5 +1,4 @@
 :root { --font-mono: "DM Mono", "Fira Code", monospace; --font-heading: "Syne", "Arial Black", sans-serif; }
-:root { --font-mono: "DM Mono", "Fira Code", monospace; --font-heading: "Syne", "Arial Black", sans-serif; }
 
 @tailwind base;
 @tailwind components;
@@ -50,4 +49,20 @@ h1, h2, h3, .heading { font-family: 'Arial Black', sans-serif; }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+.skeleton {
+  border-radius: 4px;
+  background: #1b1b18;
+}
+
+.shimmer {
+  background-image: linear-gradient(90deg, #1b1b18 0%, #2a2a26 50%, #1b1b18 100%);
+  background-size: 220% 100%;
+  animation: shimmer 1.25s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

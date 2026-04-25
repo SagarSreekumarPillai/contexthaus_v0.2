@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useRef, useCallback } from "react";
 import { api, Property, IngestResult } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 
 interface Props {
   property: Property;
@@ -11,6 +12,8 @@ const SOURCE_TYPES = ["email", "pdf", "erp", "slack", "other"];
 
 export default function PropertyView({ property, onUpdate }: Props) {
   const [ingesting, setIngesting] = useState(false);
+  const [ingestError, setIngestError] = useState("");
+  const [lastAttemptFile, setLastAttemptFile] = useState<File | null>(null);
   const [lastResult, setLastResult] = useState<IngestResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [sourceType, setSourceType] = useState("email");
@@ -19,16 +22,23 @@ export default function PropertyView({ property, onUpdate }: Props) {
 
   const ingest = useCallback(async (file: File) => {
     setIngesting(true);
+    setIngestError("");
     setLastResult(null);
     try {
       const result = await api.ingestFile(property.id, file, sourceType);
       setLastResult(result);
+      setLastAttemptFile(null);
+      trackEvent("ingest_succeeded", { propertyId: property.id, sourceType, status: result.status });
       if (result.status === "ingested") {
         const updated = await api.getProperty(property.id);
         onUpdate(updated);
         setChangedSections(result.changes.map(c => c.section));
         setTimeout(() => setChangedSections([]), 3000);
       }
+    } catch {
+      setIngestError("Ingest failed. Please retry.");
+      setLastAttemptFile(file);
+      trackEvent("ingest_failed", { propertyId: property.id, sourceType });
     } finally {
       setIngesting(false);
     }
@@ -119,7 +129,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div>
-          <div className="heading" style={{ fontSize: 18, fontWeight: 800 }}>{property.name}</div>
+          <div className="heading" style={{ fontSize: 18, fontWeight: 800 }} data-testid="selected-property-title">{property.name}</div>
           <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{property.address}</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -137,6 +147,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
           <button
             onClick={() => fileRef.current?.click()}
             disabled={ingesting}
+            data-testid="ingest-file-button"
             style={{
               padding: "6px 16px", background: ingesting ? "var(--border)" : "var(--amber)",
               color: ingesting ? "var(--text-muted)" : "#000", border: "none",
@@ -147,11 +158,43 @@ export default function PropertyView({ property, onUpdate }: Props) {
             {ingesting ? "PROCESSING..." : "↑ INGEST FILE"}
           </button>
           <input ref={fileRef} type="file" style={{ display: "none" }} onChange={onFileChange}
+            data-testid="ingest-file-input"
             accept=".txt,.pdf,.eml,.md,.csv,.json" />
         </div>
       </div>
 
       {/* Status Bar */}
+      {ingestError && (
+        <div className="fade-in" style={{
+          padding: "8px 24px", fontSize: 11,
+          background: "rgba(248,113,113,0.1)",
+          borderBottom: "1px solid var(--border)",
+          color: "var(--red)",
+          display: "flex", gap: 12, alignItems: "center",
+        }}>
+          <span data-testid="ingest-error-message">{ingestError}</span>
+          {lastAttemptFile && (
+            <button
+              type="button"
+              onClick={() => {
+                trackEvent("ingest_retry_clicked", { propertyId: property.id, sourceType });
+                ingest(lastAttemptFile);
+              }}
+              data-testid="retry-ingest-button"
+              style={{
+                border: "1px solid var(--red)",
+                color: "var(--red)",
+                background: "transparent",
+                padding: "4px 8px",
+                fontSize: 11,
+                cursor: "pointer",
+              }}
+            >
+              Retry ingest
+            </button>
+          )}
+        </div>
+      )}
       {lastResult && (
         <div className="fade-in" style={{
           padding: "8px 24px", fontSize: 11,
