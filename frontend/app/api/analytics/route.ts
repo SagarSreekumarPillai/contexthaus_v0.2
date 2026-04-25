@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid analytics payload" }, { status: 400 });
   }
 
-  // Mock sink for local development. Replace with persistent storage later.
+  // Fallback sink when the FastAPI backend is unavailable (see /api/analytics/events there).
   console.log("[analytics]", {
     event: body.event ?? "unknown",
     payload: body.payload ?? {},
