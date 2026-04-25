@@ -21,6 +21,28 @@ test.describe("Home UX", () => {
     expect(roleEvents).toBeGreaterThan(0);
   });
 
+  test("ships analytics events to configured endpoint", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      (window as unknown as { __CH_ANALYTICS_ENDPOINT_OVERRIDE?: string }).__CH_ANALYTICS_ENDPOINT_OVERRIDE = "/__analytics_test";
+    });
+    await page.route("**/api/properties/", async (route) => {
+      await route.fulfill({ json: [] });
+    });
+    await page.route("**/__analytics_test", async (route) => {
+      await route.fulfill({ status: 204, body: "" });
+    });
+
+    const analyticsRequest = page.waitForRequest("**/__analytics_test");
+
+    await page.goto("/");
+    await page.getByTestId("role-option-owner").click();
+
+    const request = await analyticsRequest;
+    const payload = request.postDataJSON() as { event?: string };
+    expect(payload.event).toBe("role_selected");
+  });
+
   test("shows onboarding checklist and property selection flow", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.clear();
