@@ -1,0 +1,228 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("Home UX", () => {
+  test("shows role onboarding modal and saves selection", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+    });
+    await page.route("**/api/properties/", async (route) => {
+      await route.fulfill({ json: [] });
+    });
+
+    await page.goto("/");
+    await expect(page.getByTestId("role-onboarding-modal")).toBeVisible();
+    await page.getByTestId("role-option-owner").click();
+    await expect(page.getByTestId("role-onboarding-modal")).not.toBeVisible();
+    const roleEvents = await page.evaluate(() =>
+      ((window as unknown as { __chEvents?: Array<{ event: string }> }).__chEvents || [])
+        .filter((item) => item.event === "role_selected")
+        .length
+    );
+    expect(roleEvents).toBeGreaterThan(0);
+  });
+
+  test("shows onboarding checklist and property selection flow", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("ch.user-role.v1", "owner");
+    });
+
+    await page.route("**/api/properties/", async (route) => {
+      await route.fulfill({
+        json: [
+          {
+            id: "prop-e2e",
+            name: "E2E Property",
+            address: "42 Test Street",
+            context_md: "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+    });
+
+    await page.goto("/");
+
+    await expect(page.getByText("ContextHaus")).toBeVisible();
+    await expect(page.getByText("Onboarding checklist")).toBeVisible();
+    await expect(page.getByText("Select your primary property")).toBeVisible();
+    await expect(page.getByTestId("onboarding-progress")).toContainText("1/3");
+    await expect(page.getByText("E2E Property")).toBeVisible();
+    await page.getByTestId("property-list-item").first().click();
+    await expect(page.getByTestId("onboarding-progress")).toContainText("2/3");
+  });
+
+  test("can hide and resume onboarding panel", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("ch.user-role.v1", "owner");
+    });
+    await page.route("**/api/properties/", async (route) => {
+      await route.fulfill({ json: [] });
+    });
+
+    await page.goto("/");
+    await page.getByTestId("hide-onboarding").click();
+    await expect(page.getByText("Onboarding paused")).toBeVisible();
+    await page.getByTestId("resume-onboarding").click();
+    await expect(page.getByText("Onboarding checklist")).toBeVisible();
+    const events = await page.evaluate(() =>
+      ((window as unknown as { __chEvents?: Array<{ event: string }> }).__chEvents || []).map((item) => item.event)
+    );
+    expect(events).toContain("onboarding_hidden");
+    expect(events).toContain("onboarding_resumed");
+  });
+
+  test("shows property empty state guidance", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("ch.user-role.v1", "owner");
+    });
+
+    await page.route("**/api/properties/", async (route) => {
+      await route.fulfill({ json: [] });
+    });
+    await page.goto("/");
+    await expect(page.getByText("SELECT A PROPERTY", { exact: true })).toBeVisible();
+    await expect(page.getByText("or create one to get started")).toBeVisible();
+  });
+
+  test("opens command palette with keyboard and selects property", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("ch.user-role.v1", "owner");
+    });
+    await page.route("**/api/properties/", async (route) => {
+      await route.fulfill({
+        json: [
+          {
+            id: "prop-a",
+            name: "Alpha Tower",
+            address: "1 Main Street",
+            context_md: "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: "prop-b",
+            name: "Bravo Gardens",
+            address: "2 High Street",
+            context_md: "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+    });
+
+    await page.goto("/");
+    await page.keyboard.press("Meta+k");
+    if (!(await page.getByTestId("command-palette").isVisible())) {
+      await page.getByTestId("open-command-palette").click();
+    }
+    await expect(page.getByTestId("command-palette")).toBeVisible();
+    await page.getByTestId("command-palette-input").fill("Bravo");
+    await page.getByTestId("command-property-item").first().click();
+    await expect(page.getByTestId("selected-property-title")).toContainText("Bravo Gardens");
+  });
+
+  test("shows retry action when property loading fails", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("ch.user-role.v1", "owner");
+    });
+    let requestCount = 0;
+    await page.route("**/api/properties/", async (route) => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        await route.fulfill({ status: 500, json: { detail: "boom" } });
+        return;
+      }
+      await route.fulfill({ json: [] });
+    });
+
+    await page.goto("/");
+    await expect(page.getByText("Could not load properties. Check your connection and retry.")).toBeVisible();
+    await page.getByTestId("retry-load-properties").click();
+    await expect(page.getByText("Could not load properties. Check your connection and retry.")).not.toBeVisible();
+    const events = await page.evaluate(() =>
+      ((window as unknown as { __chEvents?: Array<{ event: string }> }).__chEvents || []).map((item) => item.event)
+    );
+    expect(events).toContain("properties_retry_clicked");
+  });
+
+  test("shows ingest retry and succeeds on retry", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("ch.user-role.v1", "owner");
+    });
+
+    await page.route("**/api/properties/", async (route) => {
+      await route.fulfill({
+        json: [
+          {
+            id: "prop-ingest",
+            name: "Ingest Test Property",
+            address: "99 Retry Lane",
+            context_md: "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+    });
+
+    await page.route("**/api/properties/prop-ingest", async (route) => {
+      await route.fulfill({
+        json: {
+          id: "prop-ingest",
+          name: "Ingest Test Property",
+          address: "99 Retry Lane",
+          context_md: "## Summary\n- Updated",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      });
+    });
+
+    let ingestAttempt = 0;
+    await page.route("**/api/ingest/prop-ingest/source", async (route) => {
+      ingestAttempt += 1;
+      if (ingestAttempt === 1) {
+        await route.fulfill({ status: 500, json: { detail: "first attempt failed" } });
+        return;
+      }
+      await route.fulfill({
+        json: {
+          status: "ingested",
+          filename: "sample.txt",
+          changes: [{ section: "Summary", type: "updated" }],
+          context_md: "## Summary\n- Updated",
+        },
+      });
+    });
+
+    await page.goto("/");
+    await page.getByTestId("property-list-item").first().click();
+
+    await page.getByTestId("ingest-file-input").setInputFiles({
+      name: "sample.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("test content"),
+    });
+    await expect(page.getByTestId("ingest-error-message")).toBeVisible();
+
+    await page.getByTestId("retry-ingest-button").click();
+    await expect(page.getByTestId("ingest-error-message")).not.toBeVisible();
+    await expect(page.getByText("✓ INGESTED — sample.txt")).toBeVisible();
+    await expect(page.getByTestId("onboarding-progress")).toContainText("3/3");
+    const events = await page.evaluate(() =>
+      ((window as unknown as { __chEvents?: Array<{ event: string }> }).__chEvents || []).map((item) => item.event)
+    );
+    expect(events).toContain("ingest_failed");
+    expect(events).toContain("ingest_retry_clicked");
+    expect(events).toContain("ingest_succeeded");
+  });
+});
+
