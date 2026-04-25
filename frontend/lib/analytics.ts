@@ -9,7 +9,10 @@ function getAnalyticsEndpoint(): string | null {
   if (override) return override;
 
   const envEndpoint = process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT;
-  return envEndpoint ?? null;
+  if (envEndpoint) return envEndpoint;
+
+  // Repo-local default sink so analytics works without extra setup.
+  return "/api/analytics";
 }
 
 function sendToEndpoint(entry: { event: string; payload: AnalyticsPayload; timestamp: string }): void {
