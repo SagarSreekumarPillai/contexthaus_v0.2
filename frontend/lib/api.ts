@@ -8,6 +8,31 @@ function authHeaders(): Record<string, string> {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
+function formatApiErrorBody(data: unknown, status: number): string {
+  if (!data || typeof data !== "object") {
+    return `Request failed (${status})`;
+  }
+  const rec = data as Record<string, unknown>;
+  const detail = rec.detail;
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (item && typeof item === "object" && "msg" in item) {
+          return String((item as { msg: unknown }).msg);
+        }
+        return JSON.stringify(item);
+      })
+      .join("; ");
+  }
+  if (typeof rec.error === "string") {
+    return rec.error;
+  }
+  return `Request failed (${status})`;
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   if (response.status === 401) {
     clearToken();
@@ -17,12 +42,13 @@ async function parseResponse<T>(response: Response): Promise<T> {
     throw new Error("Unauthorized");
   }
   if (!response.ok) {
+    let data: unknown;
     try {
-      const data = (await response.json()) as { detail?: string; error?: string };
-      throw new Error(data.detail || data.error || `Request failed (${response.status})`);
+      data = await response.json();
     } catch {
       throw new Error(`Request failed (${response.status})`);
     }
+    throw new Error(formatApiErrorBody(data, response.status));
   }
   return response.json() as Promise<T>;
 }
