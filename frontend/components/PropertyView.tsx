@@ -15,12 +15,14 @@ import { trackEvent } from "@/lib/analytics";
 interface Props {
   property: Property;
   onUpdate: (p: Property) => void;
+  /** Auditor / contractor: no ingest or vendor mutations (API also enforces). */
+  readOnly?: boolean;
 }
 
 const SOURCE_TYPES = ["email", "pdf", "erp", "slack", "other"];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export default function PropertyView({ property, onUpdate }: Props) {
+export default function PropertyView({ property, onUpdate, readOnly = false }: Props) {
   const [ingesting, setIngesting] = useState(false);
   const [ingestError, setIngestError] = useState("");
   const [lastAttemptFile, setLastAttemptFile] = useState<File | null>(null);
@@ -123,6 +125,10 @@ export default function PropertyView({ property, onUpdate }: Props) {
   }, [selectedVendorId]);
 
   useEffect(() => {
+    if (readOnly) {
+      Promise.resolve().then(() => setRecommendations([]));
+      return;
+    }
     if (!newBooking.starts_at || !newBooking.ends_at || vendors.length === 0) {
       Promise.resolve().then(() => {
         setRecommendations([]);
@@ -149,9 +155,10 @@ export default function PropertyView({ property, onUpdate }: Props) {
           setRecommendationLoading(false);
         });
       });
-  }, [newBooking.starts_at, newBooking.ends_at, selectedVendorId, vendors, property.id]);
+  }, [newBooking.starts_at, newBooking.ends_at, selectedVendorId, vendors, property.id, readOnly]);
 
   const createVendor = async () => {
+    if (readOnly) return;
     if (!newVendor.name.trim()) return;
     try {
       const created = await api.createVendor(property.id, {
@@ -179,6 +186,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
   };
 
   const addAvailabilitySlot = async () => {
+    if (readOnly) return;
     if (!selectedVendorId) return;
     const updatedSlots = [
       ...availability.map((slot) => ({
@@ -202,6 +210,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
   };
 
   const createBooking = async () => {
+    if (readOnly) return;
     if (!selectedVendorId || !newBooking.title || !newBooking.starts_at || !newBooking.ends_at) return;
     try {
       const booking = await api.createVendorBooking(selectedVendorId, {
@@ -219,6 +228,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
   };
 
   const sendCommunication = async () => {
+    if (readOnly) return;
     if (!selectedVendorId || !contactDraft.message.trim()) return;
     try {
       const created = await api.createVendorCommunication(selectedVendorId, {
@@ -245,6 +255,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
   };
 
   const autoDispatch = async () => {
+    if (readOnly) return;
     if (!dispatchDraft.issue_title.trim()) return;
     try {
       const result = await api.autoDispatchVendor(property.id, {
@@ -270,6 +281,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
   };
 
   const ingest = useCallback(async (file: File) => {
+    if (readOnly) return;
     setIngesting(true);
     setIngestError("");
     setLastResult(null);
@@ -291,16 +303,18 @@ export default function PropertyView({ property, onUpdate }: Props) {
     } finally {
       setIngesting(false);
     }
-  }, [property.id, sourceType, onUpdate]);
+  }, [property.id, sourceType, onUpdate, readOnly]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     setDragOver(false);
     const file = e.dataTransfer.files[0];
     if (file) ingest(file);
-  }, [ingest]);
+  }, [ingest, readOnly]);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
     const file = e.target.files?.[0];
     if (file) ingest(file);
   };
@@ -325,7 +339,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
       const isH1 = line.startsWith("# ");
       const isH2 = line.startsWith("## ");
       const isH3 = line.startsWith("### ");
-      const bulletMatch = line.match(/^(\s*)- (.*)/s);
+      const bulletMatch = line.match(/^(\s*)- (.*)/);
       const isBullet = bulletMatch !== null;
       const isSeparator = line === "---";
 
@@ -384,38 +398,44 @@ export default function PropertyView({ property, onUpdate }: Props) {
           <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{property.address}</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <select
-            value={sourceType}
-            onChange={e => setSourceType(e.target.value)}
-            style={{
-              background: "var(--surface)", border: "1px solid var(--border)",
-              color: "var(--text)", padding: "6px 10px", fontFamily: "inherit",
-              fontSize: 11, outline: "none", cursor: "pointer",
-            }}
-          >
-            {SOURCE_TYPES.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
-          </select>
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={ingesting}
-            data-testid="ingest-file-button"
-            style={{
-              padding: "6px 16px", background: ingesting ? "var(--border)" : "var(--amber)",
-              color: ingesting ? "var(--text-muted)" : "#000", border: "none",
-              cursor: ingesting ? "not-allowed" : "pointer", fontFamily: "inherit",
-              fontSize: 11, fontWeight: 600, letterSpacing: "0.05em",
-            }}
-          >
-            {ingesting ? "PROCESSING..." : "↑ INGEST FILE"}
-          </button>
-          <input ref={fileRef} type="file" style={{ display: "none" }} onChange={onFileChange}
-            data-testid="ingest-file-input"
-            accept=".txt,.pdf,.eml,.md,.csv,.json" />
+          {!readOnly ? (
+            <>
+              <select
+                value={sourceType}
+                onChange={e => setSourceType(e.target.value)}
+                style={{
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  color: "var(--text)", padding: "6px 10px", fontFamily: "inherit",
+                  fontSize: 11, outline: "none", cursor: "pointer",
+                }}
+              >
+                {SOURCE_TYPES.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+              </select>
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={ingesting}
+                data-testid="ingest-file-button"
+                style={{
+                  padding: "6px 16px", background: ingesting ? "var(--border)" : "var(--amber)",
+                  color: ingesting ? "var(--text-muted)" : "#000", border: "none",
+                  cursor: ingesting ? "not-allowed" : "pointer", fontFamily: "inherit",
+                  fontSize: 11, fontWeight: 600, letterSpacing: "0.05em",
+                }}
+              >
+                {ingesting ? "PROCESSING..." : "↑ INGEST FILE"}
+              </button>
+              <input ref={fileRef} type="file" style={{ display: "none" }} onChange={onFileChange}
+                data-testid="ingest-file-input"
+                accept=".txt,.pdf,.eml,.md,.csv,.json" />
+            </>
+          ) : (
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Read-only workspace</span>
+          )}
         </div>
       </div>
 
       {/* Status Bar */}
-      {ingestError && (
+      {!readOnly && ingestError && (
         <div className="fade-in" style={{
           padding: "8px 24px", fontSize: 11,
           background: "rgba(248,113,113,0.1)",
@@ -446,7 +466,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
           )}
         </div>
       )}
-      {lastResult && (
+      {!readOnly && lastResult && (
         <div className="fade-in" style={{
           padding: "8px 24px", fontSize: 11,
           background: lastResult.status === "ignored" ? "rgba(248,113,113,0.1)" : "rgba(74,222,128,0.1)",
@@ -477,9 +497,9 @@ export default function PropertyView({ property, onUpdate }: Props) {
             border: dragOver ? "1px dashed var(--amber)" : "1px dashed transparent",
             transition: "all 0.2s",
           }}
-          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
+          onDragOver={readOnly ? undefined : (e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={readOnly ? undefined : () => setDragOver(false)}
+          onDrop={readOnly ? undefined : onDrop}
         >
           {property.context_md ? (
             <div style={{ maxWidth: 720 }}>
@@ -509,6 +529,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
           {vendorError && <div style={{ color: "var(--red)", fontSize: 11, marginBottom: 8 }}>{vendorError}</div>}
           {vendorLoading && <div style={{ color: "var(--text-muted)", fontSize: 11, marginBottom: 8 }}>Loading vendors...</div>}
 
+          {!readOnly && (
           <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Add Vendor</div>
             <input
@@ -550,6 +571,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
               Create vendor
             </button>
           </div>
+          )}
 
           {vendors.length > 0 && (
             <select
@@ -577,6 +599,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
                     {DAY_LABELS[slot.day_of_week]}: {slot.start_time} - {slot.end_time}
                   </div>
                 ))}
+                {!readOnly && (
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   <select
                     value={availabilityDraft.day_of_week}
@@ -600,6 +623,8 @@ export default function PropertyView({ property, onUpdate }: Props) {
                     style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
                   />
                 </div>
+                )}
+                {!readOnly && (
                 <button
                   type="button"
                   onClick={addAvailabilitySlot}
@@ -607,10 +632,13 @@ export default function PropertyView({ property, onUpdate }: Props) {
                 >
                   Add availability slot
                 </button>
+                )}
               </div>
 
               <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
                 <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Book vendor</div>
+                {!readOnly && (
+                <>
                 <input
                   placeholder="Booking title"
                   value={newBooking.title}
@@ -643,6 +671,8 @@ export default function PropertyView({ property, onUpdate }: Props) {
                 >
                   Create booking
                 </button>
+                </>
+                )}
                 {recommendationLoading && (
                   <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-muted)" }}>Finding best vendors...</div>
                 )}
@@ -688,6 +718,7 @@ export default function PropertyView({ property, onUpdate }: Props) {
                 </div>
               </div>
 
+              {!readOnly && (
               <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
                 <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Auto-dispatch by SLA</div>
                 <input
@@ -743,9 +774,11 @@ export default function PropertyView({ property, onUpdate }: Props) {
                   Auto-dispatch now
                 </button>
               </div>
+              )}
 
               <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
                 <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Contact vendor</div>
+                {!readOnly && (
                 <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                   <select
                     value={contactDraft.channel}
@@ -778,6 +811,9 @@ export default function PropertyView({ property, onUpdate }: Props) {
                     ))}
                   </select>
                 </div>
+                )}
+                {!readOnly && (
+                <>
                 <input
                   placeholder="Subject"
                   value={contactDraft.subject}
@@ -809,6 +845,8 @@ export default function PropertyView({ property, onUpdate }: Props) {
                     </a>
                   )}
                 </div>
+                </>
+                )}
                 {selectedVendor?.contact_phone && (
                   <a
                     href={`tel:${selectedVendor.contact_phone}`}

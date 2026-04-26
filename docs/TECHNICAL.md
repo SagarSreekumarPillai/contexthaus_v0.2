@@ -78,6 +78,8 @@ Create `backend/.env` by copying `backend/.env.example`. **Never paste real keys
 | `TAVILY_API_KEY` | No | If missing, enrichment is skipped |
 | `PIONEER_API_KEY` | No | If missing, classifier returns relevant with reason `no pioneer key` |
 | `DATABASE_URL` | No | Default `sqlite+aiosqlite:///./contexthaus.db` (relative to process CWD) |
+| `JWT_SECRET` | Strongly recommended in production | Signs session tokens; insecure default is baked in for local dev only |
+| `JWT_EXPIRE_DAYS` | No | Access token lifetime (default `7`) |
 
 **Frontend** (`frontend/.env.local`, gitignored):
 
@@ -138,7 +140,15 @@ Full schemas: OpenAPI at `/docs` on the running backend.
 
 | Method | Path | Description |
 |--------|------|---------------|
-| GET | `/health` | Liveness |
+| GET | `/health` | Liveness (no auth) |
+| POST | `/api/auth/bootstrap` | First-run only: create organization + first admin, returns JWT |
+| POST | `/api/auth/login` | Email/password login, returns JWT |
+| GET | `/api/auth/me` | Current user profile (requires `Authorization: Bearer`) |
+| GET | `/api/users/` | List org users (**admin** only) |
+| POST | `/api/users/` | Create user (**admin** only) |
+| PATCH | `/api/users/{id}` | Update user (**admin** only) |
+| PUT | `/api/users/{id}/assignments` | Set contractor property IDs (**admin** only) |
+| GET | `/api/audit/` | Audit log (**admin** or **auditor**) |
 | GET | `/api/properties/` | List properties |
 | POST | `/api/properties/` | Create property |
 | GET | `/api/properties/{id}` | Property detail + `context_md` |

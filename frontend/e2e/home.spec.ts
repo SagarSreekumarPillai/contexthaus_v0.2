@@ -1,15 +1,32 @@
 import { expect, test } from "@playwright/test";
 
+async function mockSession(page: import("@playwright/test").Page, role = "verwalter") {
+  await page.route("**/api/auth/me", async (route) => {
+    await route.fulfill({
+      json: {
+        id: "u1",
+        email: "e2e@test.local",
+        full_name: "E2E User",
+        role,
+        organization_id: "org1",
+        organization_name: "Test Org",
+      },
+    });
+  });
+}
+
 test.describe("Home UX", () => {
   test("shows role onboarding modal and saves selection", async ({ page }) => {
+    await mockSession(page, "verwalter");
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ch_access_token", "e2e-token");
     });
     await page.route("**/api/properties/", async (route) => {
       await route.fulfill({ json: [] });
     });
 
-    await page.goto("/");
+    await page.goto("/workspace");
     await expect(page.getByTestId("role-onboarding-modal")).toBeVisible();
     await page.getByTestId("role-option-owner").click();
     await expect(page.getByTestId("role-onboarding-modal")).not.toBeVisible();
@@ -22,8 +39,10 @@ test.describe("Home UX", () => {
   });
 
   test("ships analytics events to configured endpoint", async ({ page }) => {
+    await mockSession(page, "verwalter");
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ch_access_token", "e2e-token");
       (window as unknown as { __CH_ANALYTICS_ENDPOINT_OVERRIDE?: string }).__CH_ANALYTICS_ENDPOINT_OVERRIDE = "/__analytics_test";
     });
     await page.route("**/api/properties/", async (route) => {
@@ -35,7 +54,7 @@ test.describe("Home UX", () => {
 
     const analyticsRequest = page.waitForRequest("**/__analytics_test");
 
-    await page.goto("/");
+    await page.goto("/workspace");
     await page.getByTestId("role-option-owner").click();
 
     const request = await analyticsRequest;
@@ -44,8 +63,10 @@ test.describe("Home UX", () => {
   });
 
   test("shows onboarding checklist and property selection flow", async ({ page }) => {
+    await mockSession(page, "verwalter");
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ch_access_token", "e2e-token");
       window.localStorage.setItem("ch.user-role.v1", "owner");
     });
 
@@ -64,7 +85,7 @@ test.describe("Home UX", () => {
       });
     });
 
-    await page.goto("/");
+    await page.goto("/workspace");
 
     await expect(page.getByText("ContextHaus")).toBeVisible();
     await expect(page.getByText("Onboarding checklist")).toBeVisible();
@@ -76,15 +97,17 @@ test.describe("Home UX", () => {
   });
 
   test("can hide and resume onboarding panel", async ({ page }) => {
+    await mockSession(page, "verwalter");
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ch_access_token", "e2e-token");
       window.localStorage.setItem("ch.user-role.v1", "owner");
     });
     await page.route("**/api/properties/", async (route) => {
       await route.fulfill({ json: [] });
     });
 
-    await page.goto("/");
+    await page.goto("/workspace");
     await page.getByTestId("hide-onboarding").click();
     await expect(page.getByText("Onboarding paused")).toBeVisible();
     await page.getByTestId("resume-onboarding").click();
@@ -97,22 +120,26 @@ test.describe("Home UX", () => {
   });
 
   test("shows property empty state guidance", async ({ page }) => {
+    await mockSession(page, "verwalter");
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ch_access_token", "e2e-token");
       window.localStorage.setItem("ch.user-role.v1", "owner");
     });
 
     await page.route("**/api/properties/", async (route) => {
       await route.fulfill({ json: [] });
     });
-    await page.goto("/");
+    await page.goto("/workspace");
     await expect(page.getByText("SELECT A PROPERTY", { exact: true })).toBeVisible();
     await expect(page.getByText("or create one to get started")).toBeVisible();
   });
 
   test("opens command palette with keyboard and selects property", async ({ page }) => {
+    await mockSession(page, "verwalter");
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ch_access_token", "e2e-token");
       window.localStorage.setItem("ch.user-role.v1", "owner");
     });
     await page.route("**/api/properties/", async (route) => {
@@ -138,7 +165,7 @@ test.describe("Home UX", () => {
       });
     });
 
-    await page.goto("/");
+    await page.goto("/workspace");
     await page.keyboard.press("Meta+k");
     if (!(await page.getByTestId("command-palette").isVisible())) {
       await page.getByTestId("open-command-palette").click();
@@ -150,8 +177,10 @@ test.describe("Home UX", () => {
   });
 
   test("shows retry action when property loading fails", async ({ page }) => {
+    await mockSession(page, "verwalter");
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ch_access_token", "e2e-token");
       window.localStorage.setItem("ch.user-role.v1", "owner");
     });
     let requestCount = 0;
@@ -164,7 +193,7 @@ test.describe("Home UX", () => {
       await route.fulfill({ json: [] });
     });
 
-    await page.goto("/");
+    await page.goto("/workspace");
     await expect(page.getByText("Could not load properties. Check your connection and retry.")).toBeVisible();
     await page.getByTestId("retry-load-properties").click();
     await expect(page.getByText("Could not load properties. Check your connection and retry.")).not.toBeVisible();
@@ -175,8 +204,10 @@ test.describe("Home UX", () => {
   });
 
   test("shows ingest retry and succeeds on retry", async ({ page }) => {
+    await mockSession(page, "verwalter");
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ch_access_token", "e2e-token");
       window.localStorage.setItem("ch.user-role.v1", "owner");
     });
 
@@ -225,7 +256,7 @@ test.describe("Home UX", () => {
       });
     });
 
-    await page.goto("/");
+    await page.goto("/workspace");
     await page.getByTestId("property-list-item").first().click();
 
     await page.getByTestId("ingest-file-input").setInputFiles({
@@ -247,4 +278,3 @@ test.describe("Home UX", () => {
     expect(events).toContain("ingest_succeeded");
   });
 });
-

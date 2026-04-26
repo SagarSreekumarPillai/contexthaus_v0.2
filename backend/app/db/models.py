@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, ForeignKey, Float, Integer
+from sqlalchemy import String, Text, DateTime, ForeignKey, Float, Integer, UniqueConstraint, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -8,16 +8,84 @@ class Base(DeclarativeBase):
     pass
 
 
+ROLE_ADMIN = "admin"
+ROLE_VERWALTER = "verwalter"
+ROLE_AUDITOR = "auditor"
+ROLE_CONTRACTOR = "contractor"
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    users: Mapped[list["User"]] = relationship("User", back_populates="organization")
+    properties: Mapped[list["Property"]] = relationship("Property", back_populates="organization")
+
+
+class User(Base):
+    __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("organization_id", "email", name="uq_user_org_email"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    organization_id: Mapped[str] = mapped_column(String, ForeignKey("organizations.id"))
+    email: Mapped[str] = mapped_column(String(320))
+    password_hash: Mapped[str] = mapped_column(String(255))
+    full_name: Mapped[str] = mapped_column(String(255), default="")
+    role: Mapped[str] = mapped_column(String(50))  # admin | verwalter | auditor | contractor
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="users")
+    property_assignments: Mapped[list["UserPropertyAssignment"]] = relationship(
+        "UserPropertyAssignment", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserPropertyAssignment(Base):
+    """Contractor access to specific properties."""
+
+    __tablename__ = "user_property_assignments"
+    __table_args__ = (UniqueConstraint("user_id", "property_id", name="uq_user_property"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
+    property_id: Mapped[str] = mapped_column(String, ForeignKey("properties.id"))
+
+    user: Mapped["User"] = relationship("User", back_populates="property_assignments")
+    property: Mapped["Property"] = relationship("Property", back_populates="user_assignments")
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    organization_id: Mapped[str] = mapped_column(String, ForeignKey("organizations.id"))
+    user_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
+    action: Mapped[str] = mapped_column(String(100))
+    resource_type: Mapped[str] = mapped_column(String(80))
+    resource_id: Mapped[str] = mapped_column(String(80), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Property(Base):
     __tablename__ = "properties"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    organization_id: Mapped[str | None] = mapped_column(String, ForeignKey("organizations.id"), nullable=True)
     name: Mapped[str] = mapped_column(String(255))
     address: Mapped[str] = mapped_column(String(500))
     context_md: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    organization: Mapped["Organization | None"] = relationship("Organization", back_populates="properties")
+    user_assignments: Mapped[list["UserPropertyAssignment"]] = relationship(
+        "UserPropertyAssignment", back_populates="property", cascade="all, delete-orphan"
+    )
     sources: Mapped[list["Source"]] = relationship("Source", back_populates="property", cascade="all, delete-orphan")
     facts: Mapped[list["Fact"]] = relationship("Fact", back_populates="property", cascade="all, delete-orphan")
     vendors: Mapped[list["Vendor"]] = relationship("Vendor", back_populates="property", cascade="all, delete-orphan")

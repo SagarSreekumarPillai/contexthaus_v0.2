@@ -30,11 +30,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.auth import router as auth_router
+from app.api.users_admin import router as users_admin_router
+from app.api.audit import router as audit_router
 from app.api.properties import router as properties_router
 from app.api.ingest import router as ingest_router
 from app.api.analytics import router as analytics_router
 from app.api.vendors import router as vendors_router
 
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(users_admin_router, prefix="/api/users", tags=["users"])
+app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
 app.include_router(properties_router, prefix="/api/properties", tags=["properties"])
 app.include_router(ingest_router, prefix="/api/ingest", tags=["ingest"])
 app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])

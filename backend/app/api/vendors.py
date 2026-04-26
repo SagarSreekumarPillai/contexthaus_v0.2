@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from app.api.deps import get_current_user
+from app.services.access import get_property_for_user, can_read_vendors, can_mutate_vendors
+from app.services.audit_service import write_audit
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.db.models import Property, Vendor, VendorAvailability, VendorBooking, VendorCommunication
+from app.db.models import Property, User, Vendor, VendorAvailability, VendorBooking, VendorCommunication
 
 router = APIRouter()
 
@@ -116,8 +121,46 @@ class AutoDispatchResponse(BaseModel):
     communication: VendorCommunicationResponse
 
 
+async def _get_vendor_for_user(db: AsyncSession, user: User, vendor_id: str) -> Vendor:
+    vendor = await db.get(Vendor, vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    prop = await get_property_for_user(db, user, vendor.property_id)
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+    return vendor
+
+
+async def _availability_payload(db: AsyncSession, vendor_id: str) -> list[AvailabilityResponse]:
+    result = await db.execute(
+        select(VendorAvailability)
+        .where(VendorAvailability.vendor_id == vendor_id)
+        .order_by(VendorAvailability.day_of_week.asc(), VendorAvailability.start_time.asc())
+    )
+    slots = result.scalars().all()
+    return [
+        AvailabilityResponse(
+            id=s.id,
+            vendor_id=s.vendor_id,
+            day_of_week=s.day_of_week,
+            start_time=s.start_time,
+            end_time=s.end_time,
+        )
+        for s in slots
+    ]
+
+
 @router.get("/property/{property_id}", response_model=list[VendorResponse])
-async def list_property_vendors(property_id: str, db: AsyncSession = Depends(get_db)):
+async def list_property_vendors(
+    property_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not can_read_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    prop = await get_property_for_user(db, user, property_id)
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
     result = await db.execute(
         select(Vendor).where(Vendor.property_id == property_id).order_by(Vendor.created_at.desc())
     )
@@ -139,9 +182,15 @@ async def list_property_vendors(property_id: str, db: AsyncSession = Depends(get
 
 
 @router.post("/property/{property_id}", response_model=VendorResponse)
-async def create_vendor(property_id: str, data: VendorCreate, db: AsyncSession = Depends(get_db)):
-    property_result = await db.execute(select(Property).where(Property.id == property_id))
-    prop = property_result.scalar_one_or_none()
+async def create_vendor(
+    property_id: str,
+    data: VendorCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not can_mutate_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    prop = await get_property_for_user(db, user, property_id)
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
 
@@ -169,6 +218,15 @@ async def create_vendor(property_id: str, data: VendorCreate, db: AsyncSession =
             )
         )
 
+    await write_audit(
+        db,
+        organization_id=user.organization_id,
+        user_id=user.id,
+        action="vendor_create",
+        resource_type="vendor",
+        resource_id=vendor.id,
+        detail=data.name,
+    )
     await db.commit()
     await db.refresh(vendor)
     return VendorResponse(
@@ -185,33 +243,27 @@ async def create_vendor(property_id: str, data: VendorCreate, db: AsyncSession =
 
 
 @router.get("/{vendor_id}/availability", response_model=list[AvailabilityResponse])
-async def list_vendor_availability(vendor_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(VendorAvailability)
-        .where(VendorAvailability.vendor_id == vendor_id)
-        .order_by(VendorAvailability.day_of_week.asc(), VendorAvailability.start_time.asc())
-    )
-    slots = result.scalars().all()
-    return [
-        AvailabilityResponse(
-            id=s.id,
-            vendor_id=s.vendor_id,
-            day_of_week=s.day_of_week,
-            start_time=s.start_time,
-            end_time=s.end_time,
-        )
-        for s in slots
-    ]
+async def list_vendor_availability(
+    vendor_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not can_read_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    await _get_vendor_for_user(db, user, vendor_id)
+    return await _availability_payload(db, vendor_id)
 
 
 @router.post("/{vendor_id}/availability", response_model=list[AvailabilityResponse])
 async def replace_vendor_availability(
-    vendor_id: str, slots: list[AvailabilityInput], db: AsyncSession = Depends(get_db)
+    vendor_id: str,
+    slots: list[AvailabilityInput],
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    vendor_result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
-    vendor = vendor_result.scalar_one_or_none()
-    if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+    if not can_mutate_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    await _get_vendor_for_user(db, user, vendor_id)
 
     existing_result = await db.execute(select(VendorAvailability).where(VendorAvailability.vendor_id == vendor_id))
     for item in existing_result.scalars().all():
@@ -229,11 +281,18 @@ async def replace_vendor_availability(
         )
 
     await db.commit()
-    return await list_vendor_availability(vendor_id, db)
+    return await _availability_payload(db, vendor_id)
 
 
 @router.get("/{vendor_id}/bookings", response_model=list[BookingResponse])
-async def list_vendor_bookings(vendor_id: str, db: AsyncSession = Depends(get_db)):
+async def list_vendor_bookings(
+    vendor_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not can_read_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    await _get_vendor_for_user(db, user, vendor_id)
     result = await db.execute(
         select(VendorBooking).where(VendorBooking.vendor_id == vendor_id).order_by(VendorBooking.starts_at.asc())
     )
@@ -255,11 +314,15 @@ async def list_vendor_bookings(vendor_id: str, db: AsyncSession = Depends(get_db
 
 
 @router.post("/{vendor_id}/bookings", response_model=BookingResponse)
-async def create_vendor_booking(vendor_id: str, data: BookingCreate, db: AsyncSession = Depends(get_db)):
-    vendor_result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
-    vendor = vendor_result.scalar_one_or_none()
-    if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+async def create_vendor_booking(
+    vendor_id: str,
+    data: BookingCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not can_mutate_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    vendor = await _get_vendor_for_user(db, user, vendor_id)
 
     if data.ends_at <= data.starts_at:
         raise HTTPException(status_code=400, detail="Booking end must be after start")
@@ -289,6 +352,15 @@ async def create_vendor_booking(vendor_id: str, data: BookingCreate, db: AsyncSe
         estimated_cost=data.estimated_cost,
     )
     db.add(booking)
+    await write_audit(
+        db,
+        organization_id=user.organization_id,
+        user_id=user.id,
+        action="vendor_booking_create",
+        resource_type="vendor_booking",
+        resource_id=booking.id,
+        detail=vendor_id,
+    )
     await db.commit()
     await db.refresh(booking)
     return BookingResponse(
@@ -311,7 +383,13 @@ async def recommend_vendors(
     starts_at: datetime,
     ends_at: datetime,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
+    if not can_read_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    prop = await get_property_for_user(db, user, property_id)
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
     if ends_at <= starts_at:
         raise HTTPException(status_code=400, detail="Booking end must be after start")
 
@@ -395,7 +473,14 @@ async def recommend_vendors(
 
 
 @router.get("/{vendor_id}/communications", response_model=list[VendorCommunicationResponse])
-async def list_vendor_communications(vendor_id: str, db: AsyncSession = Depends(get_db)):
+async def list_vendor_communications(
+    vendor_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not can_read_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    await _get_vendor_for_user(db, user, vendor_id)
     result = await db.execute(
         select(VendorCommunication)
         .where(VendorCommunication.vendor_id == vendor_id)
@@ -421,12 +506,14 @@ async def list_vendor_communications(vendor_id: str, db: AsyncSession = Depends(
 
 @router.post("/{vendor_id}/communications", response_model=VendorCommunicationResponse)
 async def create_vendor_communication(
-    vendor_id: str, data: VendorCommunicationCreate, db: AsyncSession = Depends(get_db)
+    vendor_id: str,
+    data: VendorCommunicationCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    vendor_result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
-    vendor = vendor_result.scalar_one_or_none()
-    if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+    if not can_mutate_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    vendor = await _get_vendor_for_user(db, user, vendor_id)
 
     booking_id = data.booking_id
     if booking_id:
@@ -465,8 +552,16 @@ async def create_vendor_communication(
 
 @router.post("/property/{property_id}/auto-dispatch", response_model=AutoDispatchResponse)
 async def auto_dispatch_vendor(
-    property_id: str, data: AutoDispatchRequest, db: AsyncSession = Depends(get_db)
+    property_id: str,
+    data: AutoDispatchRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
+    if not can_mutate_vendors(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    prop = await get_property_for_user(db, user, property_id)
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
     start_time = data.target_starts_at
     if not start_time:
         offset_hours = {"low": 72, "medium": 24, "high": 8, "urgent": 2}.get(data.priority, 24)
@@ -479,6 +574,7 @@ async def auto_dispatch_vendor(
         starts_at=start_time,
         ends_at=end_time,
         db=db,
+        user=user,
     )
     if not recommendations:
         raise HTTPException(status_code=404, detail="No vendors found for service type")
@@ -504,6 +600,7 @@ async def auto_dispatch_vendor(
             status="scheduled",
         ),
         db=db,
+        user=user,
     )
 
     message = (
@@ -524,6 +621,7 @@ async def auto_dispatch_vendor(
             booking_id=booking.id,
         ),
         db=db,
+        user=user,
     )
 
     return AutoDispatchResponse(

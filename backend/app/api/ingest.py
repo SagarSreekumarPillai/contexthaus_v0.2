@@ -4,7 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
-from app.db.models import Property, Source, Fact
+from app.db.models import Property, Source, Fact, User
+from app.api.deps import get_current_user
+from app.services.access import get_property_for_user, can_ingest
+from app.services.audit_service import write_audit
 from app.core.llm import generate, generate_json, FLASH, PRO
 from app.core.patcher import patch_section, diff_sections, get_section
 from prompts.context_generate import SYSTEM, GENERATE_CONTEXT, PATCH_SECTION, SIGNAL_CHECK
@@ -70,11 +73,13 @@ async def ingest_source(
     file: UploadFile = File(...),
     source_type: str = Form(default="email"),
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Property).where(Property.id == property_id))
-    prop = result.scalar_one_or_none()
+    prop = await get_property_for_user(db, user, property_id)
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
+    if not can_ingest(user):
+        raise HTTPException(status_code=403, detail="Ingest requires admin or verwalter role")
 
     text, is_erp = await extract_text_with_schema(file, address=prop.address, source_type=source_type)
     if is_erp:
@@ -129,6 +134,15 @@ async def ingest_source(
 
     changes = diff_sections(old_md, new_md)
     prop.context_md = new_md
+    await write_audit(
+        db,
+        organization_id=user.organization_id,
+        user_id=user.id,
+        action="ingest_success",
+        resource_type="property",
+        resource_id=property_id,
+        detail=file.filename or "",
+    )
     await db.commit()
 
     return {
@@ -142,9 +156,12 @@ async def ingest_source(
 
 
 @router.get("/{property_id}/context")
-async def get_context(property_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Property).where(Property.id == property_id))
-    prop = result.scalar_one_or_none()
+async def get_context(
+    property_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    prop = await get_property_for_user(db, user, property_id)
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
     return {"property_id": property_id, "context_md": prop.context_md}
