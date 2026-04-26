@@ -331,7 +331,17 @@ npm run dev
 
 1. With the backend running: open `/docs` and call `GET /health`.
 2. With **`GEMINI_API_KEY`** set: try `GET /api/test-gemini` once to confirm outbound access to Google AI.
-3. Open the UI, list properties, and run an ingest on a demo file.
+3. Open the UI at `http://localhost:3000` — you are redirected to **Login**. On a **fresh database**, use **Create organization & admin** (`/bootstrap`) once, then sign in.
+4. After login, role-based home applies: **Admin** → admin dashboard; **Verwalter** → workspace; **Auditor** / **Contractor** → their dashboards (workspace is read-only for ingest and vendor mutations for those roles).
+
+---
+
+## Authentication and roles
+
+- **Bootstrap** (`POST /api/auth/bootstrap` or UI `/bootstrap`): allowed only while **no users exist**; creates an organization and the first **admin** user.
+- **Login** (`POST /api/auth/login` or UI `/login`): returns a JWT stored in the browser as `ch_access_token` (see [`frontend/lib/auth.ts`](frontend/lib/auth.ts)).
+- **Roles**: `admin` (user management + full ops), `verwalter` (properties, ingest, vendors), `auditor` (read properties + audit log), `contractor` (only **assigned** properties, read-only mutations in UI; API enforces the same).
+- **JWT**: set **`JWT_SECRET`** in `backend/.env` for any shared or production environment (see [`docs/TECHNICAL.md`](docs/TECHNICAL.md#4-environment-variables)).
 
 ---
 
