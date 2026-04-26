@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 
+const DEV_LOGIN_EMAIL = process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL?.trim() || "";
+
 export default function LoginPage() {
   const { loginWithToken } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(DEV_LOGIN_EMAIL);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -40,6 +42,24 @@ export default function LoginPage() {
       <div style={{ width: "100%", maxWidth: 400, border: "1px solid #333", padding: 28 }}>
         <h1 style={{ margin: "0 0 8px", fontSize: 22, color: "#f59e0b" }}>ContextHaus</h1>
         <p style={{ margin: "0 0 20px", fontSize: 13, color: "#888" }}>Sign in with your organization account.</p>
+        {DEV_LOGIN_EMAIL && (
+          <p
+            style={{
+              margin: "0 0 16px",
+              fontSize: 12,
+              color: "#666",
+              borderLeft: "2px solid #f59e0b",
+              paddingLeft: 10,
+            }}
+            data-testid="dev-login-hint"
+          >
+            Dev login email: <strong style={{ color: "#ccc" }}>{DEV_LOGIN_EMAIL}</strong>
+            <span style={{ display: "block", marginTop: 4 }}>
+              Use the password from <code style={{ color: "#888" }}>SEED_ADMIN_PASSWORD</code> in your backend{" "}
+              <code style={{ color: "#888" }}>.env</code> (never committed).
+            </span>
+          </p>
+        )}
         <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
           <label style={{ fontSize: 12, color: "#888" }}>
             Email

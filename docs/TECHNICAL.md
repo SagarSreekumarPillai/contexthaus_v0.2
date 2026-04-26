@@ -80,6 +80,8 @@ Create `backend/.env` by copying `backend/.env.example`. **Never paste real keys
 | `DATABASE_URL` | No | Default `sqlite+aiosqlite:///./contexthaus.db` (relative to process CWD) |
 | `JWT_SECRET` | Strongly recommended in production | Signs session tokens; insecure default is baked in for local dev only |
 | `JWT_EXPIRE_DAYS` | No | Access token lifetime (default `7`) |
+| `SEED_DEFAULT_ACCOUNT` | No | If `true` and `SEED_ADMIN_EMAIL` + `SEED_ADMIN_PASSWORD` (8+) are set, creates one org + admin when **no users** exist (startup). |
+| `SEED_ORG_NAME` / `SEED_ADMIN_*` | With seeding | Used only by the seed step above. |
 
 **Frontend** (`frontend/.env.local`, gitignored):
 

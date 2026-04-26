@@ -9,7 +9,10 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.db.database import init_db
+    from app.db.seed_default import seed_default_account_if_enabled
+
     await init_db()
+    await seed_default_account_if_enabled()
     yield
 
 
