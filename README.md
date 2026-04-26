@@ -5,7 +5,7 @@
 
 [![Security: Aikido](https://img.shields.io/badge/security-aikido-green?style=flat-square)](https://aikido.dev)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue?style=flat-square)](https://python.org)
-[![Next.js 14](https://img.shields.io/badge/next.js-14-black?style=flat-square)](https://nextjs.org)
+[![Next.js 16](https://img.shields.io/badge/next.js-16-black?style=flat-square)](https://nextjs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 
 ---
@@ -17,6 +17,17 @@ Property managers drown in context. A single building generates dozens of touchp
 When a contractor calls about a boiler at Kastanienallee 88, the manager needs to know: who owns it, who the caretaker is, what the last assembly decided, and whether there's an open ticket. That answer lives across four systems, two languages, and three years of emails.
 
 **ContextHaus solves this by maintaining a single, always-current `PROPERTY.md` per building** — dense, structured, sourced, and surgically updated every time a new document arrives.
+
+---
+
+## Documentation
+
+| Document | Audience | Contents |
+|----------|----------|----------|
+| [`docs/ENTERPRISE-SOURCE-OF-TRUTH.md`](docs/ENTERPRISE-SOURCE-OF-TRUTH.md) | Product, engineering, delivery | Enterprise pain mapping, phased roadmap, development plan, testing and refinement strategy, risks. **Program source of truth** for maturity work. |
+| [`docs/TECHNICAL.md`](docs/TECHNICAL.md) | Engineers and operators | Architecture, environment variables, runbooks, API summary, security boundaries, troubleshooting. **Canonical setup and operations guide.** |
+| [`docs/ui-ux-execution-simple.md`](docs/ui-ux-execution-simple.md) | Design / frontend | Lightweight UI execution checklist. |
+| [`docs/ui-ux-next-level-master-plan.md`](docs/ui-ux-next-level-master-plan.md) | Design / frontend | Deeper UX principles and component direction. |
 
 ---
 
@@ -68,7 +79,7 @@ Email / PDF / ERP CSV
                                    │
                                    ▼
                         ┌──────────────────────┐
-                        │   Next.js 14 UI       │
+                        │   Next.js UI          │
                         │  Dark mode, live diff │
                         │  Amber flash on update│
                         └──────────────────────┘
@@ -178,8 +189,8 @@ Pioneer is called only on documents ingested when a property already has context
 | API framework | FastAPI | 0.115 | REST endpoints, async handlers |
 | Database | SQLite + SQLAlchemy async | 2.0 | Property and source storage |
 | ASGI server | uvicorn | 0.34 | Production-grade serving |
-| Frontend | Next.js | 14 | React app, SSR |
-| Styling | Tailwind CSS | 3.4 | Dark UI, amber diff highlights |
+| Frontend | Next.js | 16 | React app, App Router |
+| Styling | Tailwind CSS | 4.x | Dark UI, amber diff highlights |
 | Language (FE) | TypeScript | 5 | Type-safe API client |
 | LLM (generation) | Gemini 2.5 Pro | latest | Full PROPERTY.md generation |
 | LLM (patching) | Gemini 2.5 Flash | latest | Surgical section patches |
@@ -223,8 +234,10 @@ contexthaus/
 │   ├── app/
 │   │   ├── main.py              # FastAPI app, CORS, lifespan
 │   │   ├── api/
-│   │   │   ├── properties.py    # GET/POST /api/properties
-│   │   │   └── ingest.py        # POST /api/ingest/{id}/source
+│   │   │   ├── properties.py    # CRUD /api/properties
+│   │   │   ├── ingest.py        # POST /api/ingest/{id}/source
+│   │   │   ├── analytics.py     # POST /api/analytics/events
+│   │   │   └── vendors.py       # vendor workflows
 │   │   ├── core/
 │   │   │   ├── llm.py           # Gemini Pro/Flash wrappers
 │   │   │   ├── patcher.py       # Surgical section patching
@@ -247,24 +260,29 @@ contexthaus/
 
 ## Setup
 
+Follow these steps from a fresh clone. **Never commit `.env` files or API keys.** Use the committed `*.env.example` files as templates only.
+
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 20+
-- [`uv`](https://github.com/astral-sh/uv) package manager (`pip install uv`)
+- **Python 3.11+** (required by the backend)
+- **Node.js 20+** (LTS recommended)
+- **npm** (ships with Node)
+- Recommended: [`uv`](https://github.com/astral-sh/uv) for fast Python environments (`pip install uv`). Plain `python -m venv` and `pip` work as well.
 
-### Environment Variables
+### 1. Backend environment
 
-Create `backend/.env`:
-
-```env
-GEMINI_API_KEY=your_gemini_key
-TAVILY_API_KEY=your_tavily_key
-PIONEER_API_KEY=your_pioneer_key
-DATABASE_URL=sqlite+aiosqlite:///./contexthaus.db
+```bash
+cd backend
+cp .env.example .env
 ```
 
-### Backend
+Edit `backend/.env` and set at least **`GEMINI_API_KEY`** for LLM generation and patching. `TAVILY_API_KEY` and `PIONEER_API_KEY` are optional (enrichment and the classifier gate are skipped or degraded without them). Variable descriptions: [`docs/TECHNICAL.md`](docs/TECHNICAL.md#4-environment-variables).
+
+### 2. Install and run the API
+
+Run commands **from the `backend/` directory** so `load_dotenv()` picks up `backend/.env` and the default SQLite file is created next to your working directory.
+
+**Option A — `uv`**
 
 ```bash
 cd backend
@@ -274,9 +292,32 @@ uv pip install -e .
 uvicorn app.main:app --reload --port 8000
 ```
 
-Backend starts at `http://localhost:8000`. Visit `/docs` for the interactive API explorer.
+**Option B — `venv` + `pip`**
 
-### Frontend
+```bash
+cd backend
+python3.11 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -U pip
+pip install -e .
+uvicorn app.main:app --reload --port 8000
+```
+
+- API: `http://127.0.0.1:8000`
+- OpenAPI: `http://127.0.0.1:8000/docs`
+- Health: `GET http://127.0.0.1:8000/health`
+
+### 3. Frontend environment (optional)
+
+If the API is not on `localhost:8000`, copy the template:
+
+```bash
+cd frontend
+cp .env.example .env.local
+# Set NEXT_PUBLIC_API_URL to your API base URL
+```
+
+### 4. Install and run the web app
 
 ```bash
 cd frontend
@@ -284,7 +325,38 @@ npm install
 npm run dev
 ```
 
-Frontend starts at `http://localhost:3000`.
+- UI: `http://localhost:3000`
+
+### 5. Quick verification
+
+1. With the backend running: open `/docs` and call `GET /health`.
+2. With **`GEMINI_API_KEY`** set: try `GET /api/test-gemini` once to confirm outbound access to Google AI.
+3. Open the UI, list properties, and run an ingest on a demo file.
+
+---
+
+## Testing
+
+### Backend (`pytest`)
+
+Does not require API keys for the default smoke test.
+
+```bash
+cd backend
+pip install -e ".[dev]"    # or: uv pip install -e ".[dev]"
+pytest -q
+```
+
+Details and future coverage goals: [`docs/TECHNICAL.md`](docs/TECHNICAL.md#8-testing) and [`docs/ENTERPRISE-SOURCE-OF-TRUTH.md`](docs/ENTERPRISE-SOURCE-OF-TRUTH.md#52-refinement-loop-continuous).
+
+### Frontend (Playwright)
+
+```bash
+cd frontend
+npm install
+npx playwright install    # first run only
+npm run test:e2e
+```
 
 ---
 
@@ -296,9 +368,14 @@ Frontend starts at `http://localhost:3000`.
 | `GET` | `/api/properties/` | List all properties |
 | `POST` | `/api/properties/` | Create a new property |
 | `GET` | `/api/properties/{id}` | Get a single property with context |
+| `DELETE` | `/api/properties/{id}` | Delete a property |
 | `POST` | `/api/ingest/{id}/source` | Ingest a file (email/PDF/CSV), returns diff |
 | `GET` | `/api/ingest/{id}/context` | Get raw `PROPERTY.md` for a property |
-| `GET` | `/api/test-gemini` | Connectivity test for Gemini |
+| `POST` | `/api/analytics/events` | Client analytics events (204 No Content) |
+| `GET` / `POST` | `/api/vendors/...` | Vendor directory, availability, bookings, recommendations, communications, auto-dispatch |
+| `GET` | `/api/test-gemini` | Gemini connectivity check (requires `GEMINI_API_KEY`) |
+
+Full path list and production notes: [`docs/TECHNICAL.md`](docs/TECHNICAL.md#7-api-surface-summary).
 
 ### Ingest Response Schema
 
@@ -360,10 +437,11 @@ This makes it immediately visible what a document changed — without showing a 
 
 Scanned by [Aikido](https://aikido.dev) — **0 open issues**.
 
-- No secrets in version control (`.env` excluded via `.gitignore`)
-- CORS restricted to `localhost:3000` in development
-- All user inputs are passed to LLMs as data, never as executable instructions
-- File uploads are size-capped and decoded safely with `errors="ignore"`
+- **Secrets:** Never commit `.env`, `.env.local`, or real API keys. Only `*.env.example` placeholders belong in git. Use a secret manager in production.
+- **Gitignore:** `.env`, `.env.local`, `*.db`, `.venv/`, `node_modules/`, `.next/` are excluded from version control.
+- **CORS:** Restricted to local dev origins in `backend/app/main.py`; configure explicitly for production.
+- **LLM inputs:** User uploads are treated as data to the model, not as executable instructions; still treat all uploads as untrusted files.
+- **Uploads:** Size-capped and decoded with safe error handling in the ingest pipeline.
 
 ---
 
