@@ -165,7 +165,16 @@ UI mode: `npm run test:e2e:ui`.
 
 ### Backend
 
-Automated `pytest` suite is specified in [`ENTERPRISE-SOURCE-OF-TRUTH.md`](ENTERPRISE-SOURCE-OF-TRUTH.md) Phase 2; add tests under `backend/tests/` as they land. Until then, rely on manual smoke:
+From `backend/` with Python 3.11+:
+
+```bash
+pip install -e ".[dev]"   # or: uv pip install -e ".[dev]"
+pytest -q
+```
+
+The default suite includes a **health endpoint smoke test** that does not call Gemini or external APIs. Expand coverage per [`ENTERPRISE-SOURCE-OF-TRUTH.md`](ENTERPRISE-SOURCE-OF-TRUTH.md) Phase 2 (parser, patcher, ingest contracts).
+
+**Manual smoke** (any environment):
 
 1. `GET /health` → 200  
 2. `GET /api/properties/` → 200  
@@ -207,3 +216,4 @@ Automated `pytest` suite is specified in [`ENTERPRISE-SOURCE-OF-TRUTH.md`](ENTER
 | Version | Date | Notes |
 |---------|------|-------|
 | 1.0 | 2026-04-26 | Initial consolidated technical document. |
+| 1.1 | 2026-04-26 | Documented backend pytest baseline and install command. |

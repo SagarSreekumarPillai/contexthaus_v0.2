@@ -63,6 +63,7 @@ Phases are sequential for critical path; some work packages can overlap where no
 ### Phase 2 — Testing and quality rigor
 
 - Backend: `pytest` + HTTP contract tests against FastAPI (TestClient or async client), golden fixtures for `erp_parser` and `patcher` / `diff_sections`.
+- **Baseline (in repo):** `backend/tests/test_health.py` — smoke test for `GET /health` with no API keys required; install dev extras: `pip install -e ".[dev]"` from `backend/`.
 - Frontend: Playwright CI for critical paths; expand coverage for ingest and property list.
 - Classifier: labeled evaluation set (even small) with precision/recall tracked in CI or nightly job.
 - **Exit criteria:** CI runs unit + integration on every PR; flake policy documented.
@@ -179,3 +180,4 @@ A feature is **done** when:
 | Version | Date | Notes |
 |---------|------|-------|
 | 1.0 | 2026-04-26 | Initial enterprise program of record, aligned with pain research and repo layout. |
+| 1.1 | 2026-04-26 | Phase 2 baseline: documented `pytest` health smoke in backend. |
