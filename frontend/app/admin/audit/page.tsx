@@ -1,20 +1,21 @@
 "use client";
 
-import Link from "next/link";
-import RequireAuth from "@/components/RequireAuth";
+import { AppShell } from "@/components/AppShell";
 import AuditLogTable from "@/components/AuditLogTable";
+import RequireAuth from "@/components/RequireAuth";
 
 export default function AdminAuditPage() {
   return (
     <RequireAuth roles={["admin"]}>
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#e5e5e5", padding: 28, fontFamily: "system-ui" }}>
-        <Link href="/admin/dashboard" style={{ color: "#888", fontSize: 13 }}>
-          ← Admin
-        </Link>
-        <h1 style={{ color: "#f59e0b" }}>Audit log</h1>
-        <p style={{ color: "#888", fontSize: 13 }}>Immutable trail of logins, ingests, property changes, and user administration.</p>
+      <AppShell
+        title="Audit log"
+        subtitle="Immutable trail of logins, ingests, property changes, and user administration across your organization."
+      >
+        <p className="ch-lead" style={{ marginTop: 0 }}>
+          Most recent events first. Operational visibility—export and retention policies are not wired yet.
+        </p>
         <AuditLogTable />
-      </div>
+      </AppShell>
     </RequireAuth>
   );
 }

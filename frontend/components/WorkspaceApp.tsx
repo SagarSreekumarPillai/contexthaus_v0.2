@@ -219,7 +219,7 @@ export default function WorkspaceApp() {
   const onboardingCompleted = completedCount === checklistItems.length;
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+    <div className="ch-workspace-root">
       {!selectedRole && (
         <div
           style={{
@@ -397,10 +397,16 @@ export default function WorkspaceApp() {
       )}
 
       {/* Sidebar */}
-      <div style={{
-        width: 280, borderRight: "1px solid var(--border)",
-        display: "flex", flexDirection: "column", flexShrink: 0,
-      }}>
+      <div
+        className="ch-workspace-sidebar"
+        style={{
+          width: 280,
+          borderRight: "1px solid var(--border)",
+          display: "flex",
+          flexDirection: "column",
+          flexShrink: 0,
+        }}
+      >
         {/* Logo */}
         <div style={{ padding: "20px 16px", borderBottom: "1px solid var(--border)" }}>
           <div className="heading" style={{ fontSize: 18, fontWeight: 800, color: "var(--amber)" }}>

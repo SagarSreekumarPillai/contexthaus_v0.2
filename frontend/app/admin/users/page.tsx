@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { AppShell } from "@/components/AppShell";
 import RequireAuth from "@/components/RequireAuth";
 import { api, type OrgUser, type Property } from "@/lib/api";
 import type { UserRole } from "@/lib/auth";
@@ -92,143 +92,113 @@ export default function AdminUsersPage() {
 
   return (
     <RequireAuth roles={["admin"]}>
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#e5e5e5", padding: 28, fontFamily: "system-ui" }}>
-        <Link href="/admin/dashboard" style={{ color: "#888", fontSize: 13 }}>
-          ← Admin
-        </Link>
-        <h1 style={{ color: "#f59e0b" }}>Users</h1>
-        <p style={{ color: "#888", fontSize: 13 }}>
-          Create accounts for <strong>Verwalter</strong> (full operations), <strong>Auditor</strong> (read + audit),
-          and <strong>Contractor</strong> (assigned properties, read-only workspace). Assign properties for contractors
-          after saving the user.
-        </p>
-        {error && <div style={{ color: "#f87171", marginBottom: 12 }}>{error}</div>}
+      <AppShell
+        title="Team directory"
+        subtitle="Create accounts for Verwalter (full operations), Auditor (read + audit), and Contractor (assigned properties, read-only workspace)."
+      >
+        {error ? <p className="ch-error">{error}</p> : null}
 
-        <form
-          onSubmit={createUser}
-          style={{
-            marginTop: 20,
-            padding: 16,
-            border: "1px solid #333",
-            borderRadius: 8,
-            display: "grid",
-            gap: 10,
-            maxWidth: 480,
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#f59e0b", fontWeight: 600 }}>New user</div>
-          <input
-            placeholder="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ padding: 10, background: "#111", border: "1px solid #333", color: "#fff" }}
-          />
-          <input
-            placeholder="Password (min 8)"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            style={{ padding: 10, background: "#111", border: "1px solid #333", color: "#fff" }}
-          />
-          <input
-            placeholder="Full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            style={{ padding: 10, background: "#111", border: "1px solid #333", color: "#fff" }}
-          />
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as UserRole)}
-            style={{ padding: 10, background: "#111", border: "1px solid #333", color: "#fff" }}
-          >
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            style={{ padding: 12, background: "#f59e0b", color: "#000", border: "none", fontWeight: 700, cursor: "pointer" }}
-          >
+        <form className="ch-card ch-form-grid" onSubmit={createUser}>
+          <div style={{ fontSize: 12, color: "var(--ch-accent)", fontWeight: 600 }}>Invite user</div>
+          <label className="ch-auth-label">
+            Email
+            <input className="ch-input" placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </label>
+          <label className="ch-auth-label">
+            Password (min 8)
+            <input
+              className="ch-input"
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+          </label>
+          <label className="ch-auth-label">
+            Full name
+            <input className="ch-input" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </label>
+          <label className="ch-auth-label">
+            Role
+            <select className="ch-select" value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="ch-btn ch-btn-primary" style={{ justifySelf: "start" }}>
             Create user
           </button>
         </form>
 
-        <h2 style={{ marginTop: 32, fontSize: 16, color: "#888" }}>Directory</h2>
-        <table style={{ width: "100%", maxWidth: 900, borderCollapse: "collapse", fontSize: 13, marginTop: 12 }}>
-          <thead>
-            <tr style={{ textAlign: "left", color: "#888", borderBottom: "1px solid #333" }}>
-              <th style={{ padding: 8 }}>Email</th>
-              <th style={{ padding: 8 }}>Name</th>
-              <th style={{ padding: 8 }}>Role</th>
-              <th style={{ padding: 8 }}>Active</th>
-              <th style={{ padding: 8 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} style={{ borderBottom: "1px solid #1a1a1a" }}>
-                <td style={{ padding: 8 }}>{u.email}</td>
-                <td style={{ padding: 8 }}>{u.full_name || "—"}</td>
-                <td style={{ padding: 8 }}>
-                  <select
-                    value={u.role}
-                    onChange={(e) => void changeRole(u.id, e.target.value as UserRole)}
-                    style={{ padding: 6, background: "#111", border: "1px solid #333", color: "#fff" }}
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td style={{ padding: 8 }}>{u.is_active ? "yes" : "no"}</td>
-                <td style={{ padding: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => void toggleActive(u)}
-                    style={{ background: "transparent", border: "1px solid #444", color: "#ccc", cursor: "pointer", padding: "4px 8px" }}
-                  >
-                    {u.is_active ? "Deactivate" : "Activate"}
-                  </button>
-                  {u.role === "contractor" && (
-                    <button
-                      type="button"
-                      onClick={() => openAssignments(u)}
-                      style={{ background: "transparent", border: "1px solid #f59e0b", color: "#f59e0b", cursor: "pointer", padding: "4px 8px" }}
-                    >
-                      Assign properties
-                    </button>
-                  )}
-                </td>
+        <h2 className="ch-h1" style={{ marginTop: 36, fontSize: "1.1rem" }}>
+          Directory
+        </h2>
+        <p className="ch-muted" style={{ marginBottom: 14 }}>
+          Role changes apply on next request. Contractors need explicit property assignments.
+        </p>
+
+        <div className="ch-table-wrap">
+          <table className="ch-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Active</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td>{u.email}</td>
+                  <td>{u.full_name || "—"}</td>
+                  <td>
+                    <select
+                      className="ch-select"
+                      style={{ maxWidth: 160 }}
+                      value={u.role}
+                      onChange={(e) => void changeRole(u.id, e.target.value as UserRole)}
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>{u.is_active ? "yes" : "no"}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button type="button" className="ch-btn ch-btn-ghost ch-btn-sm" onClick={() => void toggleActive(u)}>
+                        {u.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                      {u.role === "contractor" && (
+                        <button type="button" className="ch-btn ch-btn-primary ch-btn-sm" onClick={() => openAssignments(u)}>
+                          Assign properties
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {assignUserId && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.75)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 20,
-              zIndex: 100,
-            }}
-          >
-            <div style={{ background: "#111", border: "1px solid #333", padding: 20, maxWidth: 480, width: "100%" }}>
-              <div style={{ fontWeight: 700, marginBottom: 12, color: "#f59e0b" }}>Property access</div>
+          <div className="ch-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="assign-modal-title">
+            <div className="ch-modal">
+              <div id="assign-modal-title" className="ch-modal-title">
+                Property access
+              </div>
               {properties.map((p) => (
-                <label key={p.id} style={{ display: "flex", gap: 8, marginBottom: 8, fontSize: 13, cursor: "pointer" }}>
+                <label key={p.id} style={{ display: "flex", gap: 10, marginBottom: 10, fontSize: 13, cursor: "pointer", color: "var(--ch-text-secondary)" }}>
                   <input
                     type="checkbox"
                     checked={!!assignSelection[p.id]}
@@ -239,26 +209,18 @@ export default function AdminUsersPage() {
                   </span>
                 </label>
               ))}
-              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                <button
-                  type="button"
-                  onClick={() => void saveAssignments()}
-                  style={{ padding: "10px 16px", background: "#f59e0b", color: "#000", border: "none", fontWeight: 700, cursor: "pointer" }}
-                >
+              <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                <button type="button" className="ch-btn ch-btn-primary" onClick={() => void saveAssignments()}>
                   Save
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setAssignUserId(null)}
-                  style={{ padding: "10px 16px", background: "transparent", border: "1px solid #444", color: "#ccc", cursor: "pointer" }}
-                >
+                <button type="button" className="ch-btn ch-btn-ghost" onClick={() => setAssignUserId(null)}>
                   Cancel
                 </button>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </AppShell>
     </RequireAuth>
   );
 }

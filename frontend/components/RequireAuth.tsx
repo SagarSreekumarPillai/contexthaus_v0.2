@@ -29,8 +29,8 @@ export default function RequireAuth({
 
   if (loading || !user) {
     return (
-      <div style={{ padding: 24, color: "var(--text-muted, #888)" }}>
-        Checking session…
+      <div className="ch-loading-screen">
+        <div className="ch-loading-card">Checking session…</div>
       </div>
     );
   }

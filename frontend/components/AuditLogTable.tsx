@@ -15,37 +15,37 @@ export default function AuditLogTable() {
   }, []);
 
   if (error) {
-    return <div style={{ color: "#f87171", fontSize: 13 }}>{error}</div>;
+    return <div className="ch-error">{error}</div>;
   }
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+    <div className="ch-table-wrap">
+      <table className="ch-table">
         <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #333", color: "#888" }}>
-            <th style={{ padding: "8px 6px" }}>When</th>
-            <th style={{ padding: "8px 6px" }}>Action</th>
-            <th style={{ padding: "8px 6px" }}>Resource</th>
-            <th style={{ padding: "8px 6px" }}>User</th>
-            <th style={{ padding: "8px 6px" }}>Detail</th>
+          <tr>
+            <th>When</th>
+            <th>Action</th>
+            <th>Resource</th>
+            <th>User</th>
+            <th>Detail</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id} style={{ borderBottom: "1px solid #1a1a1a" }}>
-              <td style={{ padding: "8px 6px", color: "#ccc", whiteSpace: "nowrap" }}>{r.created_at}</td>
-              <td style={{ padding: "8px 6px", color: "#f59e0b" }}>{r.action}</td>
-              <td style={{ padding: "8px 6px" }}>
+            <tr key={r.id}>
+              <td style={{ whiteSpace: "nowrap", color: "var(--ch-text-secondary)" }}>{r.created_at}</td>
+              <td style={{ color: "var(--ch-accent)", fontWeight: 500 }}>{r.action}</td>
+              <td>
                 {r.resource_type}
                 {r.resource_id ? ` / ${r.resource_id.slice(0, 8)}…` : ""}
               </td>
-              <td style={{ padding: "8px 6px", color: "#888" }}>{r.user_id?.slice(0, 8) ?? "—"}</td>
-              <td style={{ padding: "8px 6px", color: "#888", maxWidth: 360 }}>{r.detail}</td>
+              <td style={{ color: "var(--ch-text-muted)" }}>{r.user_id?.slice(0, 8) ?? "—"}</td>
+              <td style={{ color: "var(--ch-text-secondary)", maxWidth: 360 }}>{r.detail}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {rows.length === 0 && <p style={{ color: "#666", marginTop: 12 }}>No audit entries yet.</p>}
+      {rows.length === 0 ? <p className="ch-muted" style={{ padding: "14px 16px", margin: 0 }}>No audit entries yet.</p> : null}
     </div>
   );
 }

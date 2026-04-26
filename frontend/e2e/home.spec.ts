@@ -15,6 +15,17 @@ async function mockSession(page: import("@playwright/test").Page, role = "verwal
   });
 }
 
+/** PropertyView calls vendor APIs on mount; unmocked requests hit the real backend and can 401 → logout. */
+async function mockVendorApis(page: import("@playwright/test").Page) {
+  await page.route("**/api/vendors/**", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fulfill({ status: 200, json: {} });
+      return;
+    }
+    await route.fulfill({ json: [] });
+  });
+}
+
 test.describe("Home UX", () => {
   test("shows role onboarding modal and saves selection", async ({ page }) => {
     await mockSession(page, "verwalter");
@@ -64,6 +75,7 @@ test.describe("Home UX", () => {
 
   test("shows onboarding checklist and property selection flow", async ({ page }) => {
     await mockSession(page, "verwalter");
+    await mockVendorApis(page);
     await page.addInitScript(() => {
       window.localStorage.clear();
       window.localStorage.setItem("ch_access_token", "e2e-token");
@@ -137,6 +149,7 @@ test.describe("Home UX", () => {
 
   test("opens command palette with keyboard and selects property", async ({ page }) => {
     await mockSession(page, "verwalter");
+    await mockVendorApis(page);
     await page.addInitScript(() => {
       window.localStorage.clear();
       window.localStorage.setItem("ch_access_token", "e2e-token");
@@ -205,10 +218,24 @@ test.describe("Home UX", () => {
 
   test("shows ingest retry and succeeds on retry", async ({ page }) => {
     await mockSession(page, "verwalter");
+    await mockVendorApis(page);
     await page.addInitScript(() => {
       window.localStorage.clear();
       window.localStorage.setItem("ch_access_token", "e2e-token");
       window.localStorage.setItem("ch.user-role.v1", "owner");
+    });
+
+    await page.route("**/api/properties/prop-ingest", async (route) => {
+      await route.fulfill({
+        json: {
+          id: "prop-ingest",
+          name: "Ingest Test Property",
+          address: "99 Retry Lane",
+          context_md: "## Summary\n- Updated",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      });
     });
 
     await page.route("**/api/properties/", async (route) => {
@@ -223,19 +250,6 @@ test.describe("Home UX", () => {
             updated_at: new Date().toISOString(),
           },
         ],
-      });
-    });
-
-    await page.route("**/api/properties/prop-ingest", async (route) => {
-      await route.fulfill({
-        json: {
-          id: "prop-ingest",
-          name: "Ingest Test Property",
-          address: "99 Retry Lane",
-          context_md: "## Summary\n- Updated",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
       });
     });
 

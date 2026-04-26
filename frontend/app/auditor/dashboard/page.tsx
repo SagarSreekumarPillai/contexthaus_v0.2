@@ -1,47 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { AppShell } from "@/components/AppShell";
 import RequireAuth from "@/components/RequireAuth";
 
 export default function AuditorDashboardPage() {
   return (
     <RequireAuth roles={["auditor"]}>
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#e5e5e5", padding: 28, fontFamily: "system-ui" }}>
-        <h1 style={{ color: "#f59e0b", marginTop: 0 }}>Auditor</h1>
-        <p style={{ color: "#888", maxWidth: 560 }}>
-          Read-only access to properties and vendor context. Use the workspace to review building state; ingest and
-          mutations are disabled.
-        </p>
-        <div style={{ display: "grid", gap: 12, marginTop: 24, maxWidth: 400 }}>
-          <Link
-            href="/workspace"
-            style={{
-              display: "block",
-              padding: 16,
-              border: "1px solid #333",
-              borderRadius: 8,
-              color: "#f59e0b",
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            Open read-only workspace →
+      <AppShell
+        title="Auditor home"
+        subtitle="Read-only access to properties and vendor context. Ingest and mutations are disabled in the workspace."
+      >
+        <div className="ch-tile-grid">
+          <Link href="/workspace" className="ch-link-tile">
+            <span className="ch-link-tile-title">Open read-only workspace →</span>
+            <span className="ch-link-tile-desc">Review building context, vendors, and communications without changing records.</span>
           </Link>
-          <Link
-            href="/auditor/audit"
-            style={{
-              display: "block",
-              padding: 16,
-              border: "1px solid #333",
-              borderRadius: 8,
-              color: "#e5e5e5",
-              textDecoration: "none",
-            }}
-          >
-            Audit log →
+          <Link href="/auditor/audit" className="ch-link-tile">
+            <span className="ch-link-tile-title">Audit log →</span>
+            <span className="ch-link-tile-desc">Follow authentication and read activity across the organization.</span>
           </Link>
         </div>
-      </div>
+      </AppShell>
     </RequireAuth>
   );
 }

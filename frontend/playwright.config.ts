@@ -9,11 +9,12 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:3100",
     trace: "on-first-retry",
   },
+  /* Production server avoids Next.js singleton lock when another `next dev` exists for this app. */
   webServer: {
-    command: "npm run dev -- --port 3100",
+    command: "npm run build && npx next start -H 127.0.0.1 -p 3100",
     url: "http://127.0.0.1:3100",
     reuseExistingServer: false,
-    timeout: 120000,
+    timeout: 300000,
   },
   projects: [
     {

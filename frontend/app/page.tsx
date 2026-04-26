@@ -26,8 +26,8 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div style={{ padding: 24, color: "#888", fontFamily: "system-ui" }}>
-      Redirecting…
+    <div className="ch-auth-page">
+      <div className="ch-loading-card">Redirecting…</div>
     </div>
   );
 }

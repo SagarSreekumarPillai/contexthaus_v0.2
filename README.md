@@ -26,8 +26,9 @@ When a contractor calls about a boiler at Kastanienallee 88, the manager needs t
 |----------|----------|----------|
 | [`docs/ENTERPRISE-SOURCE-OF-TRUTH.md`](docs/ENTERPRISE-SOURCE-OF-TRUTH.md) | Product, engineering, delivery | Enterprise pain mapping, phased roadmap, development plan, testing and refinement strategy, risks. **Program source of truth** for maturity work. |
 | [`docs/TECHNICAL.md`](docs/TECHNICAL.md) | Engineers and operators | Architecture, environment variables, runbooks, API summary, security boundaries, troubleshooting. **Canonical setup and operations guide.** |
-| [`docs/ui-ux-execution-simple.md`](docs/ui-ux-execution-simple.md) | Design / frontend | Lightweight UI execution checklist. |
-| [`docs/ui-ux-next-level-master-plan.md`](docs/ui-ux-next-level-master-plan.md) | Design / frontend | Deeper UX principles and component direction. |
+| [`docs/UI_REVAMP_PLAN.md`](docs/UI_REVAMP_PLAN.md) | Design / frontend | **B2B console UI source of truth** — Dribbble-class dashboard direction, tokens, `AppShell`, and implementation checklist for the authenticated experience. |
+| [`docs/ui-ux-execution-simple.md`](docs/ui-ux-execution-simple.md) | Design / frontend | Lightweight UI execution checklist (optional). |
+| [`docs/ui-ux-next-level-master-plan.md`](docs/ui-ux-next-level-master-plan.md) | Design / frontend | Broader UX notes (optional). |
 
 ---
 
