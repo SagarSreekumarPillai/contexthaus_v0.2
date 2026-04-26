@@ -67,7 +67,8 @@ Centered **card** on canvas, same tokens; no persistent nav.
 | `RequireAuth` loading state | Done |
 | Login + bootstrap pages | Done |
 | `WorkspaceApp` — token-aligned root + sidebar class | Done |
-| `PropertyView` — section polish using tokens (incremental) | Optional pass |
+| `PropertyView` — `ch-pv-*` layout, rail panels, markdown prose, a11y | Done |
+| `WorkspaceApp` — role modal + command palette (`ch-ws-*`) | Done |
 
 ## 5. Accessibility and QA
 
@@ -81,3 +82,4 @@ Centered **card** on canvas, same tokens; no persistent nav.
 | Date | Note |
 |------|------|
 | 2026-04-26 | Initial plan + Phase 1–5 implementation (shell, tokens, dashboards, auth polish). |
+| 2026-04-26 | Peak pass: `PropertyView` polished shell + vendor rail + responsive split; markdown typography; workspace modals. |

@@ -221,49 +221,23 @@ export default function WorkspaceApp() {
   return (
     <div className="ch-workspace-root">
       {!selectedRole && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.72)",
-            zIndex: 80,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-          data-testid="role-onboarding-modal"
-        >
-          <div style={{
-            width: "min(720px, 100%)",
-            border: "1px solid var(--border)",
-            background: "var(--surface)",
-            padding: 20,
-          }}>
-            <div className="heading" style={{ fontSize: 20, color: "var(--amber)", marginBottom: 8 }}>
+        <div className="ch-ws-overlay" data-testid="role-onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="ws-role-title">
+          <div className="ch-ws-modal">
+            <h2 id="ws-role-title" className="ch-ws-modal-title">
               Welcome to ContextHaus
-            </div>
-            <div style={{ color: "var(--text-muted)", marginBottom: 14, fontSize: 12 }}>
-              Pick your primary goal so we can personalize your onboarding path.
-            </div>
-            <div style={{ display: "grid", gap: 10 }}>
+            </h2>
+            <p className="ch-ws-modal-lead">Pick your primary goal so we can personalize your onboarding path.</p>
+            <div className="ch-ws-role-grid">
               {ROLES.map((role) => (
                 <button
                   key={role.id}
                   type="button"
+                  className="ch-ws-role-btn"
                   onClick={() => setRole(role.id)}
                   data-testid={`role-option-${role.id}`}
-                  style={{
-                    border: "1px solid var(--border)",
-                    background: "transparent",
-                    color: "var(--text)",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    cursor: "pointer",
-                  }}
                 >
-                  <div style={{ fontWeight: 600, marginBottom: 3 }}>{role.label}</div>
-                  <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{role.hint}</div>
+                  <div className="ch-ws-role-btn-label">{role.label}</div>
+                  <div className="ch-ws-role-btn-hint">{role.hint}</div>
                 </button>
               ))}
             </div>
@@ -273,122 +247,73 @@ export default function WorkspaceApp() {
 
       {commandPaletteOpen && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.72)",
-            zIndex: 70,
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            paddingTop: 80,
-          }}
+          className="ch-ws-overlay ch-ws-overlay--top"
+          style={{ zIndex: 70 }}
           onClick={() => setCommandPaletteOpen(false)}
           data-testid="command-palette-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Command palette"
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(700px, 92vw)",
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-            }}
-            data-testid="command-palette"
-          >
+          <div className="ch-ws-palette" onClick={(e) => e.stopPropagation()} data-testid="command-palette">
             <input
+              className="ch-ws-palette-input"
               value={commandQuery}
               onChange={(e) => setCommandQuery(e.target.value)}
-              placeholder="Search commands or properties..."
+              placeholder="Search commands or properties…"
               autoFocus
               data-testid="command-palette-input"
-              style={{
-                width: "100%",
-                border: "none",
-                borderBottom: "1px solid var(--border)",
-                background: "transparent",
-                color: "var(--text)",
-                padding: "12px 14px",
-                outline: "none",
-              }}
             />
-            <div style={{ maxHeight: 360, overflowY: "auto", padding: 8 }}>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", margin: "6px 4px", letterSpacing: "0.08em" }}>
-                QUICK ACTIONS
-              </div>
+            <div className="ch-ws-palette-body">
+              <div className="ch-ws-palette-section">Quick actions</div>
               {!readOnly && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCreating(true);
-                  setCommandPaletteOpen(false);
-                  trackEvent("command_palette_action_clicked", { action: "open_create" });
-                }}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "10px 12px",
-                  border: "1px solid transparent",
-                  background: "transparent",
-                  color: "var(--text)",
-                  cursor: "pointer",
-                }}
-                data-testid="command-open-create"
-              >
-                + New property
-              </button>
+                <button
+                  type="button"
+                  className="ch-ws-palette-item"
+                  onClick={() => {
+                    setCreating(true);
+                    setCommandPaletteOpen(false);
+                    trackEvent("command_palette_action_clicked", { action: "open_create" });
+                  }}
+                  data-testid="command-open-create"
+                >
+                  <span className="ch-ws-palette-item-title">+ New property</span>
+                </button>
               )}
               <button
                 type="button"
+                className="ch-ws-palette-item"
                 onClick={() => {
                   setRole("owner");
                   resumeOnboarding();
                   setCommandPaletteOpen(false);
                   trackEvent("command_palette_action_clicked", { action: "start_guided_onboarding" });
                 }}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "10px 12px",
-                  border: "1px solid transparent",
-                  background: "transparent",
-                  color: "var(--text)",
-                  cursor: "pointer",
-                }}
                 data-testid="command-start-guided"
               >
-                Start guided onboarding
+                <span className="ch-ws-palette-item-title">Start guided onboarding</span>
               </button>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", margin: "10px 4px 6px", letterSpacing: "0.08em" }}>
-                PROPERTIES
-              </div>
-              {filteredProperties.length === 0 && (
-                <div style={{ color: "var(--text-muted)", fontSize: 11, padding: "8px 12px" }}>
+              <div className="ch-ws-palette-section">Properties</div>
+              {filteredProperties.length === 0 ? (
+                <div className="ch-pv-muted" style={{ padding: "10px 12px" }}>
                   No properties found
                 </div>
-              )}
+              ) : null}
               {filteredProperties.map((property) => (
                 <button
                   type="button"
                   key={property.id}
+                  className="ch-ws-palette-item"
                   onClick={() => {
                     setSelected(property);
                     setChecklist((prev) => ({ ...prev, select: true }));
                     setCommandPaletteOpen(false);
                     trackEvent("command_palette_property_selected", { propertyId: property.id });
                   }}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    border: "1px solid transparent",
-                    background: "transparent",
-                    color: "var(--text)",
-                    cursor: "pointer",
-                  }}
                   data-testid="command-property-item"
                 >
-                  <div style={{ fontWeight: 600 }}>{property.name}</div>
-                  <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{property.address}</div>
+                  <div className="ch-ws-palette-item-title">{property.name}</div>
+                  <div className="ch-ws-palette-item-sub">{property.address}</div>
                 </button>
               ))}
             </div>

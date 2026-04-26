@@ -347,37 +347,37 @@ export default function PropertyView({ property, onUpdate, readOnly = false }: P
       const isChanged = sectionName && changedSections.includes(sectionName);
 
       if (isH1) return (
-        <div key={i} className="heading" style={{ fontSize: 20, fontWeight: 800, color: "var(--amber)", marginTop: 8, marginBottom: 4 }}>
+        <div key={i} className="ch-pv-md-h1">
           {renderInline(line.replace("# ", ""))}
         </div>
       );
-      if (isH2) return (
-        <div key={i} className={isChanged ? "diff-flash" : ""} style={{
-          fontSize: 13, fontWeight: 700, color: "var(--text)", marginTop: 16, marginBottom: 6,
-          padding: "4px 8px", background: "var(--surface)",
-          fontFamily: "Syne, sans-serif", letterSpacing: "0.05em",
-          borderLeft: isChanged ? "2px solid var(--amber)" : "2px solid var(--border)",
-        }}>
-          {line.replace("## ", "").toUpperCase()}
-        </div>
-      );
+      if (isH2) {
+        const h2Cls = `ch-pv-md-h2${isChanged ? " is-changed diff-flash" : ""}`;
+        return (
+          <div key={i} className={h2Cls}>
+            {line.replace("## ", "").toUpperCase()}
+          </div>
+        );
+      }
       if (isH3) return (
-        <div key={i} style={{ color: "var(--amber-dim)", fontWeight: 500, marginTop: 8 }}>
+        <div key={i} className="ch-pv-md-h3">
           {renderInline(line.replace("### ", ""))}
         </div>
       );
       if (isBullet && bulletMatch) return (
-        <div key={i} style={{ paddingLeft: 16 + bulletMatch[1].length * 8, color: "var(--text)", lineHeight: 1.8 }}>
-          <span style={{ color: "var(--amber)" }}>→ </span>
+        <div
+          key={i}
+          className="ch-pv-md-bullet"
+          style={{ paddingLeft: 16 + bulletMatch[1].length * 8 }}
+        >
+          <span className="ch-pv-md-bullet-mark">→ </span>
           {renderInline(bulletMatch[2])}
         </div>
       );
-      if (isSeparator) return (
-        <div key={i} style={{ borderTop: "1px solid var(--border)", margin: "12px 0" }} />
-      );
-      if (!line.trim()) return <div key={i} style={{ height: 4 }} />;
+      if (isSeparator) return <div key={i} className="ch-pv-md-sep" />;
+      if (!line.trim()) return <div key={i} className="ch-pv-md-spacer" aria-hidden />;
       return (
-        <div key={i} style={{ color: "var(--text-muted)", lineHeight: 1.8 }}>
+        <div key={i} className="ch-pv-md-p">
           {renderInline(line)}
         </div>
       );
@@ -387,79 +387,66 @@ export default function PropertyView({ property, onUpdate, readOnly = false }: P
   const selectedVendor = vendors.find((vendor) => vendor.id === selectedVendorId) ?? null;
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <div style={{
-        padding: "16px 24px", borderBottom: "1px solid var(--border)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <div>
-          <div className="heading" style={{ fontSize: 18, fontWeight: 800 }} data-testid="selected-property-title">{property.name}</div>
-          <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{property.address}</div>
+    <div className="ch-pv-root" data-testid="property-view-root">
+      <header className="ch-pv-header">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h2 className="ch-pv-title" data-testid="selected-property-title">
+            {property.name}
+          </h2>
+          <p className="ch-pv-address">{property.address}</p>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="ch-pv-toolbar">
           {!readOnly ? (
             <>
               <select
+                className="ch-pv-select"
                 value={sourceType}
-                onChange={e => setSourceType(e.target.value)}
-                style={{
-                  background: "var(--surface)", border: "1px solid var(--border)",
-                  color: "var(--text)", padding: "6px 10px", fontFamily: "inherit",
-                  fontSize: 11, outline: "none", cursor: "pointer",
-                }}
+                onChange={(e) => setSourceType(e.target.value)}
+                aria-label="Source type for ingest"
               >
-                {SOURCE_TYPES.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                {SOURCE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t.toUpperCase()}
+                  </option>
+                ))}
               </select>
               <button
+                type="button"
+                className="ch-btn ch-btn-primary ch-btn-sm"
                 onClick={() => fileRef.current?.click()}
                 disabled={ingesting}
                 data-testid="ingest-file-button"
-                style={{
-                  padding: "6px 16px", background: ingesting ? "var(--border)" : "var(--amber)",
-                  color: ingesting ? "var(--text-muted)" : "#000", border: "none",
-                  cursor: ingesting ? "not-allowed" : "pointer", fontFamily: "inherit",
-                  fontSize: 11, fontWeight: 600, letterSpacing: "0.05em",
-                }}
               >
-                {ingesting ? "PROCESSING..." : "↑ INGEST FILE"}
+                {ingesting ? "Processing…" : "Ingest file"}
               </button>
-              <input ref={fileRef} type="file" style={{ display: "none" }} onChange={onFileChange}
+              <input
+                ref={fileRef}
+                type="file"
+                style={{ display: "none" }}
+                onChange={onFileChange}
                 data-testid="ingest-file-input"
-                accept=".txt,.pdf,.eml,.md,.csv,.json" />
+                accept=".txt,.pdf,.eml,.md,.csv,.json"
+              />
             </>
           ) : (
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Read-only workspace</span>
+            <span className="ch-pv-muted">Read-only workspace</span>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Status Bar */}
       {!readOnly && ingestError && (
-        <div className="fade-in" style={{
-          padding: "8px 24px", fontSize: 11,
-          background: "rgba(248,113,113,0.1)",
-          borderBottom: "1px solid var(--border)",
-          color: "var(--red)",
-          display: "flex", gap: 12, alignItems: "center",
-        }}>
+        <div className="ch-pv-alert ch-pv-alert--error fade-in" role="alert">
           <span data-testid="ingest-error-message">{ingestError}</span>
           {lastAttemptFile && (
             <button
               type="button"
+              className="ch-btn ch-btn-ghost ch-btn-sm"
               onClick={() => {
                 trackEvent("ingest_retry_clicked", { propertyId: property.id, sourceType });
                 ingest(lastAttemptFile);
               }}
               data-testid="retry-ingest-button"
-              style={{
-                border: "1px solid var(--red)",
-                color: "var(--red)",
-                background: "transparent",
-                padding: "4px 8px",
-                fontSize: 11,
-                cursor: "pointer",
-              }}
+              style={{ borderColor: "var(--ch-danger)", color: "var(--ch-danger)" }}
             >
               Retry ingest
             </button>
@@ -467,401 +454,379 @@ export default function PropertyView({ property, onUpdate, readOnly = false }: P
         </div>
       )}
       {!readOnly && lastResult && (
-        <div className="fade-in" style={{
-          padding: "8px 24px", fontSize: 11,
-          background: lastResult.status === "ignored" ? "rgba(248,113,113,0.1)" : "rgba(74,222,128,0.1)",
-          borderBottom: "1px solid var(--border)",
-          color: lastResult.status === "ignored" ? "var(--red)" : "var(--green)",
-          display: "flex", gap: 16,
-        }}>
+        <div
+          className={`ch-pv-alert fade-in ${lastResult.status === "ignored" ? "ch-pv-alert--error" : "ch-pv-alert--success"}`}
+          role="status"
+        >
           <span>
             {lastResult.status === "ignored"
               ? `⊘ IGNORED — ${lastResult.reason}`
               : `✓ INGESTED — ${lastResult.filename}`}
           </span>
           {lastResult.status === "ingested" && lastResult.changes.length > 0 && (
-            <span style={{ color: "var(--amber)" }}>
-              ↺ UPDATED: {lastResult.changes.map(c => c.section).join(", ")}
+            <span style={{ color: "var(--ch-accent)", fontWeight: 500 }}>
+              ↺ UPDATED: {lastResult.changes.map((c) => c.section).join(", ")}
             </span>
           )}
         </div>
       )}
 
-      {/* Content */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Drop Zone + Markdown */}
+      <div className="ch-pv-body">
         <div
-          style={{
-            flex: 1, overflowY: "auto", padding: "24px",
-            background: dragOver ? "rgba(245,166,35,0.03)" : "transparent",
-            border: dragOver ? "1px dashed var(--amber)" : "1px dashed transparent",
-            transition: "all 0.2s",
-          }}
+          className={`ch-pv-main${dragOver && !readOnly ? " ch-pv-main--drag" : ""}`}
+          data-testid="property-workspace-main"
           onDragOver={readOnly ? undefined : (e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={readOnly ? undefined : () => setDragOver(false)}
           onDrop={readOnly ? undefined : onDrop}
         >
           {property.context_md ? (
-            <div style={{ maxWidth: 720 }}>
-              {renderMarkdown(property.context_md)}
-            </div>
+            <article className="ch-pv-prose">{renderMarkdown(property.context_md)}</article>
           ) : (
-            <div style={{
-              height: "100%", display: "flex", alignItems: "center",
-              justifyContent: "center", flexDirection: "column", gap: 12,
-              color: "var(--text-muted)", minHeight: 400,
-            }}>
-              <div style={{ fontSize: 40 }}>⬆</div>
-              <div className="heading" style={{ fontSize: 16, fontWeight: 700 }}>
-                DROP A FILE TO GENERATE CONTEXT
+            <div className="ch-pv-empty">
+              <div className="ch-pv-empty-icon" aria-hidden>
+                ↑
               </div>
-              <div style={{ fontSize: 11 }}>
-                Accepts: email (.eml, .txt), PDF, Slack export, ERP CSV
-              </div>
+              <div className="ch-pv-empty-title">Drop a file to build context</div>
+              <p className="ch-pv-empty-hint">
+                Email (.eml, .txt), PDF, Slack export, ERP CSV, Markdown, or JSON — we route by source type above.
+              </p>
             </div>
           )}
         </div>
 
-        <div style={{ width: 360, borderLeft: "1px solid var(--border)", overflowY: "auto", padding: 16 }}>
-          <div style={{ color: "var(--text-muted)", fontSize: 10, marginBottom: 10, letterSpacing: "0.1em" }}>
-            VENDORS + BOOKINGS
-          </div>
-          {vendorError && <div style={{ color: "var(--red)", fontSize: 11, marginBottom: 8 }}>{vendorError}</div>}
-          {vendorLoading && <div style={{ color: "var(--text-muted)", fontSize: 11, marginBottom: 8 }}>Loading vendors...</div>}
+        <aside className="ch-pv-rail" aria-label="Vendors and bookings">
+          <div className="ch-pv-rail-title">Vendors &amp; operations</div>
+          {vendorError ? <div className="ch-error" style={{ marginBottom: 0 }}>{vendorError}</div> : null}
+          {vendorLoading ? (
+            <div className="ch-pv-panel" aria-busy="true">
+              <div className="ch-pv-panel-title">Loading</div>
+              <div className="skeleton shimmer" style={{ height: 12, width: "70%" }} />
+              <div className="skeleton shimmer" style={{ height: 12, width: "45%", marginTop: 10 }} />
+              <div className="skeleton shimmer" style={{ height: 12, width: "55%", marginTop: 10 }} />
+            </div>
+          ) : null}
 
-          {!readOnly && (
-          <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Add Vendor</div>
-            <input
-              placeholder="Vendor name"
-              value={newVendor.name}
-              onChange={(e) => setNewVendor((prev) => ({ ...prev, name: e.target.value }))}
-              style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-            />
-            <input
-              placeholder="Service type (e.g. roofing)"
-              value={newVendor.service_type}
-              onChange={(e) => setNewVendor((prev) => ({ ...prev, service_type: e.target.value }))}
-              style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-            />
-            <input
-              placeholder="Email"
-              value={newVendor.contact_email}
-              onChange={(e) => setNewVendor((prev) => ({ ...prev, contact_email: e.target.value }))}
-              style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-            />
-            <input
-              placeholder="Phone"
-              value={newVendor.contact_phone}
-              onChange={(e) => setNewVendor((prev) => ({ ...prev, contact_phone: e.target.value }))}
-              style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-            />
-            <input
-              placeholder="Hourly rate"
-              value={newVendor.hourly_rate}
-              onChange={(e) => setNewVendor((prev) => ({ ...prev, hourly_rate: e.target.value }))}
-              style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-            />
-            <button
-              type="button"
-              onClick={createVendor}
-              data-testid="create-vendor-button"
-              style={{ width: "100%", background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", padding: "6px 8px", cursor: "pointer", fontSize: 11 }}
-            >
-              Create vendor
-            </button>
-          </div>
+          {!readOnly && !vendorLoading && (
+            <div className="ch-pv-panel">
+              <div className="ch-pv-panel-title">Add vendor</div>
+              <input
+                className="ch-pv-field"
+                placeholder="Vendor name"
+                value={newVendor.name}
+                onChange={(e) => setNewVendor((prev) => ({ ...prev, name: e.target.value }))}
+              />
+              <input
+                className="ch-pv-field"
+                placeholder="Service type (e.g. roofing)"
+                value={newVendor.service_type}
+                onChange={(e) => setNewVendor((prev) => ({ ...prev, service_type: e.target.value }))}
+              />
+              <input
+                className="ch-pv-field"
+                placeholder="Email"
+                value={newVendor.contact_email}
+                onChange={(e) => setNewVendor((prev) => ({ ...prev, contact_email: e.target.value }))}
+              />
+              <input
+                className="ch-pv-field"
+                placeholder="Phone"
+                value={newVendor.contact_phone}
+                onChange={(e) => setNewVendor((prev) => ({ ...prev, contact_phone: e.target.value }))}
+              />
+              <input
+                className="ch-pv-field"
+                placeholder="Hourly rate"
+                value={newVendor.hourly_rate}
+                onChange={(e) => setNewVendor((prev) => ({ ...prev, hourly_rate: e.target.value }))}
+              />
+              <button type="button" className="ch-btn ch-btn-ghost ch-btn-sm ch-pv-btn-block" onClick={createVendor} data-testid="create-vendor-button">
+                Create vendor
+              </button>
+            </div>
           )}
 
           {vendors.length > 0 && (
-            <select
-              value={selectedVendorId}
-              onChange={(e) => setSelectedVendorId(e.target.value)}
-              style={{ width: "100%", marginBottom: 10, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-            >
-              {vendors.map((vendor) => (
-                <option key={vendor.id} value={vendor.id}>
-                  {vendor.name} · {vendor.service_type} · {vendor.hourly_rate} {vendor.currency}/hr
-                </option>
-              ))}
-            </select>
+            <label className="ch-pv-muted" style={{ display: "block", marginBottom: 4 }}>
+              Active vendor
+              <select className="ch-pv-vendor-pill" value={selectedVendorId} onChange={(e) => setSelectedVendorId(e.target.value)} aria-label="Select vendor">
+                {vendors.map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.name} · {vendor.service_type} · {vendor.hourly_rate} {vendor.currency}/hr
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
 
           {selectedVendorId && (
             <>
-              <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Availability</div>
-                {availability.length === 0 && (
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>No availability slots yet.</div>
-                )}
+              <div className="ch-pv-panel">
+                <div className="ch-pv-panel-title">Availability</div>
+                {availability.length === 0 ? (
+                  <p className="ch-pv-muted" style={{ marginBottom: 10 }}>
+                    No slots yet — add windows when this vendor can be booked.
+                  </p>
+                ) : null}
                 {availability.map((slot) => (
-                  <div key={slot.id} style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
-                    {DAY_LABELS[slot.day_of_week]}: {slot.start_time} - {slot.end_time}
+                  <div key={slot.id} className="ch-pv-muted" style={{ marginBottom: 6 }}>
+                    {DAY_LABELS[slot.day_of_week]} · {slot.start_time}–{slot.end_time}
                   </div>
                 ))}
                 {!readOnly && (
-                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <select
-                    value={availabilityDraft.day_of_week}
-                    onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, day_of_week: e.target.value }))}
-                    style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                  >
-                    {DAY_LABELS.map((label, index) => (
-                      <option key={label} value={index.toString()}>{label}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="time"
-                    value={availabilityDraft.start_time}
-                    onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, start_time: e.target.value }))}
-                    style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                  />
-                  <input
-                    type="time"
-                    value={availabilityDraft.end_time}
-                    onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, end_time: e.target.value }))}
-                    style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                  />
-                </div>
+                  <div className="ch-pv-flex" style={{ marginTop: 10 }}>
+                    <select
+                      className="ch-pv-field"
+                      style={{ marginBottom: 0 }}
+                      value={availabilityDraft.day_of_week}
+                      onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, day_of_week: e.target.value }))}
+                    >
+                      {DAY_LABELS.map((label, index) => (
+                        <option key={label} value={index.toString()}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="ch-pv-field"
+                      style={{ marginBottom: 0 }}
+                      type="time"
+                      value={availabilityDraft.start_time}
+                      onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, start_time: e.target.value }))}
+                    />
+                    <input
+                      className="ch-pv-field"
+                      style={{ marginBottom: 0 }}
+                      type="time"
+                      value={availabilityDraft.end_time}
+                      onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, end_time: e.target.value }))}
+                    />
+                  </div>
                 )}
                 {!readOnly && (
-                <button
-                  type="button"
-                  onClick={addAvailabilitySlot}
-                  style={{ width: "100%", marginTop: 8, background: "transparent", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", cursor: "pointer", fontSize: 11 }}
-                >
-                  Add availability slot
-                </button>
+                  <button type="button" className="ch-btn ch-btn-ghost ch-btn-sm ch-pv-btn-block" onClick={addAvailabilitySlot}>
+                    Add availability slot
+                  </button>
                 )}
               </div>
 
-              <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Book vendor</div>
+              <div className="ch-pv-panel">
+                <div className="ch-pv-panel-title">Book vendor</div>
                 {!readOnly && (
-                <>
-                <input
-                  placeholder="Booking title"
-                  value={newBooking.title}
-                  onChange={(e) => setNewBooking((prev) => ({ ...prev, title: e.target.value }))}
-                  style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                />
-                <input
-                  type="datetime-local"
-                  value={newBooking.starts_at}
-                  onChange={(e) => setNewBooking((prev) => ({ ...prev, starts_at: e.target.value }))}
-                  style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                />
-                <input
-                  type="datetime-local"
-                  value={newBooking.ends_at}
-                  onChange={(e) => setNewBooking((prev) => ({ ...prev, ends_at: e.target.value }))}
-                  style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                />
-                <input
-                  placeholder="Estimated cost"
-                  value={newBooking.estimated_cost}
-                  onChange={(e) => setNewBooking((prev) => ({ ...prev, estimated_cost: e.target.value }))}
-                  style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                />
-                <button
-                  type="button"
-                  onClick={createBooking}
-                  data-testid="create-booking-button"
-                  style={{ width: "100%", background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", padding: "6px 8px", cursor: "pointer", fontSize: 11 }}
-                >
-                  Create booking
-                </button>
-                </>
+                  <>
+                    <input
+                      className="ch-pv-field"
+                      placeholder="Booking title"
+                      value={newBooking.title}
+                      onChange={(e) => setNewBooking((prev) => ({ ...prev, title: e.target.value }))}
+                    />
+                    <input
+                      className="ch-pv-field"
+                      type="datetime-local"
+                      value={newBooking.starts_at}
+                      onChange={(e) => setNewBooking((prev) => ({ ...prev, starts_at: e.target.value }))}
+                    />
+                    <input
+                      className="ch-pv-field"
+                      type="datetime-local"
+                      value={newBooking.ends_at}
+                      onChange={(e) => setNewBooking((prev) => ({ ...prev, ends_at: e.target.value }))}
+                    />
+                    <input
+                      className="ch-pv-field"
+                      placeholder="Estimated cost"
+                      value={newBooking.estimated_cost}
+                      onChange={(e) => setNewBooking((prev) => ({ ...prev, estimated_cost: e.target.value }))}
+                    />
+                    <button type="button" className="ch-btn ch-btn-ghost ch-btn-sm ch-pv-btn-block" onClick={createBooking} data-testid="create-booking-button">
+                      Create booking
+                    </button>
+                  </>
                 )}
-                {recommendationLoading && (
-                  <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-muted)" }}>Finding best vendors...</div>
-                )}
+                {recommendationLoading ? (
+                  <div className="ch-pv-muted" style={{ marginTop: 10 }}>
+                    <span className="skeleton shimmer" style={{ display: "inline-block", height: 10, width: 140 }} />
+                  </div>
+                ) : null}
                 {!recommendationLoading && recommendations.length > 0 && (
-                  <div style={{ marginTop: 8, border: "1px solid var(--border)", padding: 8 }}>
-                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6, letterSpacing: "0.08em" }}>
-                      RECOMMENDED VENDORS
-                    </div>
+                  <div className="ch-pv-reco">
+                    <div className="ch-pv-reco-title">Recommended</div>
                     {recommendations.slice(0, 3).map((item) => (
                       <button
                         key={item.vendor.id}
                         type="button"
+                        className={`ch-pv-reco-btn${item.is_available_for_slot ? " is-available" : ""}`}
                         onClick={() => setSelectedVendorId(item.vendor.id)}
-                        style={{
-                          width: "100%",
-                          textAlign: "left",
-                          marginBottom: 6,
-                          background: item.is_available_for_slot ? "rgba(74,222,128,0.08)" : "transparent",
-                          border: "1px solid var(--border)",
-                          color: "var(--text)",
-                          padding: "6px 8px",
-                          cursor: "pointer",
-                          fontSize: 11,
-                        }}
                       >
                         <div style={{ fontWeight: 600 }}>{item.vendor.name}</div>
-                        <div style={{ color: "var(--text-muted)" }}>{item.reason}</div>
-                        <div style={{ color: "var(--text-muted)" }}>
+                        <div className="ch-pv-muted" style={{ marginTop: 4 }}>
+                          {item.reason}
+                        </div>
+                        <div className="ch-pv-muted" style={{ marginTop: 4 }}>
                           Est. {item.estimated_cost} {item.vendor.currency} · Next: {item.next_open_window ?? "n/a"}
                         </div>
                       </button>
                     ))}
                   </div>
                 )}
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 12 }}>
                   {bookings.map((booking) => (
-                    <div key={booking.id} style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 5 }}>
-                      <div style={{ color: "var(--text)" }}>{booking.title}</div>
-                      <div>{new Date(booking.starts_at).toLocaleString()} - {new Date(booking.ends_at).toLocaleString()}</div>
-                      <div>{booking.status} · {booking.estimated_cost} EUR</div>
+                    <div key={booking.id} className="ch-pv-booking-row">
+                      <div className="ch-pv-booking-title">{booking.title}</div>
+                      <div>
+                        {new Date(booking.starts_at).toLocaleString()} — {new Date(booking.ends_at).toLocaleString()}
+                      </div>
+                      <div>
+                        {booking.status} · {booking.estimated_cost} EUR
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
               {!readOnly && (
-              <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Auto-dispatch by SLA</div>
-                <input
-                  placeholder="Issue title"
-                  value={dispatchDraft.issue_title}
-                  onChange={(e) => setDispatchDraft((prev) => ({ ...prev, issue_title: e.target.value }))}
-                  style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                />
-                <input
-                  placeholder="Issue description"
-                  value={dispatchDraft.issue_description}
-                  onChange={(e) => setDispatchDraft((prev) => ({ ...prev, issue_description: e.target.value }))}
-                  style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                />
-                <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                <div className="ch-pv-panel">
+                  <div className="ch-pv-panel-title">Auto-dispatch</div>
                   <input
-                    placeholder="Service type"
-                    value={dispatchDraft.service_type}
-                    onChange={(e) => setDispatchDraft((prev) => ({ ...prev, service_type: e.target.value }))}
-                    style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
+                    className="ch-pv-field"
+                    placeholder="Issue title"
+                    value={dispatchDraft.issue_title}
+                    onChange={(e) => setDispatchDraft((prev) => ({ ...prev, issue_title: e.target.value }))}
                   />
-                  <select
-                    value={dispatchDraft.priority}
-                    onChange={(e) => setDispatchDraft((prev) => ({ ...prev, priority: e.target.value as "low" | "medium" | "high" | "urgent" }))}
-                    style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
                   <input
-                    placeholder="Duration min"
-                    value={dispatchDraft.duration_minutes}
-                    onChange={(e) => setDispatchDraft((prev) => ({ ...prev, duration_minutes: e.target.value }))}
-                    style={{ width: 90, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
+                    className="ch-pv-field"
+                    placeholder="Issue description"
+                    value={dispatchDraft.issue_description}
+                    onChange={(e) => setDispatchDraft((prev) => ({ ...prev, issue_description: e.target.value }))}
                   />
+                  <div className="ch-pv-flex" style={{ marginBottom: 8 }}>
+                    <input
+                      className="ch-pv-field"
+                      style={{ marginBottom: 0 }}
+                      placeholder="Service type"
+                      value={dispatchDraft.service_type}
+                      onChange={(e) => setDispatchDraft((prev) => ({ ...prev, service_type: e.target.value }))}
+                    />
+                    <select
+                      className="ch-pv-field"
+                      style={{ marginBottom: 0 }}
+                      value={dispatchDraft.priority}
+                      onChange={(e) =>
+                        setDispatchDraft((prev) => ({ ...prev, priority: e.target.value as "low" | "medium" | "high" | "urgent" }))
+                      }
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                    <input
+                      className="ch-pv-field"
+                      style={{ marginBottom: 0, maxWidth: 100, flex: "0 0 auto" }}
+                      placeholder="Min"
+                      value={dispatchDraft.duration_minutes}
+                      onChange={(e) => setDispatchDraft((prev) => ({ ...prev, duration_minutes: e.target.value }))}
+                    />
+                  </div>
+                  <label className="ch-pv-muted" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={dispatchDraft.allow_outside_hours}
+                      onChange={(e) => setDispatchDraft((prev) => ({ ...prev, allow_outside_hours: e.target.checked }))}
+                    />
+                    Allow outside declared hours
+                  </label>
+                  <button type="button" className="ch-btn ch-btn-ghost ch-btn-sm ch-pv-btn-block" onClick={autoDispatch} data-testid="auto-dispatch-button">
+                    Auto-dispatch now
+                  </button>
                 </div>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 11, color: "var(--text-muted)", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={dispatchDraft.allow_outside_hours}
-                    onChange={(e) => setDispatchDraft((prev) => ({ ...prev, allow_outside_hours: e.target.checked }))}
-                  />
-                  Allow booking outside declared hours (fallback to first match)
-                </label>
-                <button
-                  type="button"
-                  onClick={autoDispatch}
-                  data-testid="auto-dispatch-button"
-                  style={{ width: "100%", background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", padding: "6px 8px", cursor: "pointer", fontSize: 11 }}
-                >
-                  Auto-dispatch now
-                </button>
-              </div>
               )}
 
-              <div style={{ border: "1px solid var(--border)", padding: 10, marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>Contact vendor</div>
+              <div className="ch-pv-panel">
+                <div className="ch-pv-panel-title">Contact</div>
                 {!readOnly && (
-                <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                  <select
-                    value={contactDraft.channel}
-                    onChange={(e) => setContactDraft((prev) => ({ ...prev, channel: e.target.value as "email" | "call" | "sms" }))}
-                    style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                  >
-                    <option value="email">Email</option>
-                    <option value="call">Call</option>
-                    <option value="sms">SMS</option>
-                  </select>
-                  <select
-                    value={contactDraft.booking_id}
-                    onChange={(e) => {
-                      const bookingId = e.target.value;
-                      const linked = bookings.find((b) => b.id === bookingId);
-                      setContactDraft((prev) => ({
-                        ...prev,
-                        booking_id: bookingId,
-                        subject: linked ? `Update on ${linked.title}` : prev.subject,
-                        message: linked
-                          ? `Hi ${selectedVendor?.name || "team"},\nCan you confirm availability for ${linked.title} on ${new Date(linked.starts_at).toLocaleString()}?\n\nThanks,`
-                          : prev.message,
-                      }));
-                    }}
-                    style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                  >
-                    <option value="">No linked booking</option>
-                    {bookings.map((booking) => (
-                      <option key={booking.id} value={booking.id}>{booking.title}</option>
-                    ))}
-                  </select>
-                </div>
-                )}
-                {!readOnly && (
-                <>
-                <input
-                  placeholder="Subject"
-                  value={contactDraft.subject}
-                  onChange={(e) => setContactDraft((prev) => ({ ...prev, subject: e.target.value }))}
-                  style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
-                />
-                <textarea
-                  placeholder="Message"
-                  value={contactDraft.message}
-                  onChange={(e) => setContactDraft((prev) => ({ ...prev, message: e.target.value }))}
-                  rows={4}
-                  style={{ width: "100%", marginBottom: 6, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11, resize: "vertical" }}
-                />
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button
-                    type="button"
-                    onClick={sendCommunication}
-                    data-testid="send-vendor-message-button"
-                    style={{ flex: 1, background: "transparent", border: "1px solid var(--amber)", color: "var(--amber)", padding: "6px 8px", cursor: "pointer", fontSize: 11 }}
-                  >
-                    Log outbound message
-                  </button>
-                  {selectedVendor?.contact_email && (
-                    <a
-                      href={`mailto:${selectedVendor.contact_email}?subject=${encodeURIComponent(contactDraft.subject)}&body=${encodeURIComponent(contactDraft.message)}`}
-                      style={{ flex: 1, textAlign: "center", textDecoration: "none", border: "1px solid var(--border)", color: "var(--text)", padding: "6px 8px", fontSize: 11 }}
+                  <div className="ch-pv-flex" style={{ marginBottom: 8 }}>
+                    <select
+                      className="ch-pv-field"
+                      style={{ marginBottom: 0 }}
+                      value={contactDraft.channel}
+                      onChange={(e) => setContactDraft((prev) => ({ ...prev, channel: e.target.value as "email" | "call" | "sms" }))}
                     >
-                      Open email
-                    </a>
-                  )}
-                </div>
-                </>
+                      <option value="email">Email</option>
+                      <option value="call">Call</option>
+                      <option value="sms">SMS</option>
+                    </select>
+                    <select
+                      className="ch-pv-field"
+                      style={{ marginBottom: 0 }}
+                      value={contactDraft.booking_id}
+                      onChange={(e) => {
+                        const bookingId = e.target.value;
+                        const linked = bookings.find((b) => b.id === bookingId);
+                        setContactDraft((prev) => ({
+                          ...prev,
+                          booking_id: bookingId,
+                          subject: linked ? `Update on ${linked.title}` : prev.subject,
+                          message: linked
+                            ? `Hi ${selectedVendor?.name || "team"},\nCan you confirm availability for ${linked.title} on ${new Date(linked.starts_at).toLocaleString()}?\n\nThanks,`
+                            : prev.message,
+                        }));
+                      }}
+                    >
+                      <option value="">No linked booking</option>
+                      {bookings.map((booking) => (
+                        <option key={booking.id} value={booking.id}>
+                          {booking.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
-                {selectedVendor?.contact_phone && (
-                  <a
-                    href={`tel:${selectedVendor.contact_phone}`}
-                    style={{ display: "inline-block", marginTop: 6, textDecoration: "none", border: "1px solid var(--border)", color: "var(--text)", padding: "4px 8px", fontSize: 11 }}
-                  >
+                {!readOnly && (
+                  <>
+                    <input
+                      className="ch-pv-field"
+                      placeholder="Subject"
+                      value={contactDraft.subject}
+                      onChange={(e) => setContactDraft((prev) => ({ ...prev, subject: e.target.value }))}
+                    />
+                    <textarea
+                      className="ch-pv-field"
+                      placeholder="Message"
+                      value={contactDraft.message}
+                      onChange={(e) => setContactDraft((prev) => ({ ...prev, message: e.target.value }))}
+                      rows={4}
+                    />
+                    <div className="ch-pv-flex">
+                      <button type="button" className="ch-btn ch-btn-ghost ch-btn-sm" onClick={sendCommunication} data-testid="send-vendor-message-button">
+                        Log message
+                      </button>
+                      {selectedVendor?.contact_email ? (
+                        <a
+                          className="ch-pv-link-btn"
+                          href={`mailto:${selectedVendor.contact_email}?subject=${encodeURIComponent(contactDraft.subject)}&body=${encodeURIComponent(contactDraft.message)}`}
+                        >
+                          Open email
+                        </a>
+                      ) : null}
+                    </div>
+                  </>
+                )}
+                {selectedVendor?.contact_phone ? (
+                  <a className="ch-pv-link-btn" style={{ display: "inline-block", marginTop: 10, maxWidth: "100%" }} href={`tel:${selectedVendor.contact_phone}`}>
                     Call {selectedVendor.contact_phone}
                   </a>
-                )}
-                <div style={{ marginTop: 8 }}>
+                ) : null}
+                <div style={{ marginTop: 12 }}>
                   {communications.slice(0, 6).map((comm) => (
-                    <div key={comm.id} style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
-                      <div style={{ color: "var(--text)" }}>{comm.channel.toUpperCase()} · {comm.status}</div>
-                      {comm.subject && <div>{comm.subject}</div>}
-                      <div style={{ whiteSpace: "pre-wrap" }}>{comm.message}</div>
-                      <div>{new Date(comm.created_at).toLocaleString()}</div>
+                    <div key={comm.id} className="ch-pv-comm">
+                      <div className="ch-pv-comm-sub">
+                        {comm.channel.toUpperCase()} · {comm.status}
+                      </div>
+                      {comm.subject ? <div>{comm.subject}</div> : null}
+                      <div style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{comm.message}</div>
+                      <div className="ch-pv-muted" style={{ marginTop: 6 }}>
+                        {new Date(comm.created_at).toLocaleString()}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -869,20 +834,13 @@ export default function PropertyView({ property, onUpdate, readOnly = false }: P
             </>
           )}
 
-          {property.context_md && (
-            <div>
-              <div style={{ color: "var(--text-muted)", fontSize: 10, marginBottom: 8, letterSpacing: "0.1em" }}>
-                RAW MARKDOWN
-              </div>
-              <pre style={{
-                fontSize: 10, color: "var(--text-muted)", lineHeight: 1.6,
-                whiteSpace: "pre-wrap", wordBreak: "break-word",
-              }}>
-                {property.context_md}
-              </pre>
+          {property.context_md ? (
+            <div className="ch-pv-raw">
+              <div className="ch-pv-raw-label">Source markdown</div>
+              <pre className="ch-pv-raw-pre">{property.context_md}</pre>
             </div>
-          )}
-        </div>
+          ) : null}
+        </aside>
       </div>
     </div>
   );
