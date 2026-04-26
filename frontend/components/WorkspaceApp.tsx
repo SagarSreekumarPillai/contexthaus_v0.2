@@ -511,7 +511,7 @@ export default function WorkspaceApp() {
 
         {/* Footer */}
         <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 10 }}>
-          Powered by Gemini 2.5 · Tavily · Pioneer
+          Classification, synthesis, and contextual enrichment
         </div>
       </div>
 
