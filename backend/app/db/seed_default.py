@@ -4,6 +4,7 @@ import logging
 import os
 import uuid
 
+from pydantic import EmailStr, TypeAdapter
 from sqlalchemy import func, select
 from app.db.database import AsyncSessionLocal
 from app.db.models import Organization, User, ROLE_ADMIN
@@ -33,6 +34,15 @@ async def seed_default_account_if_enabled() -> None:
 
     if not email:
         logger.warning("SEED_DEFAULT_ACCOUNT is set but SEED_ADMIN_EMAIL is missing; skipping seed.")
+        return
+    try:
+        TypeAdapter(EmailStr).validate_python(email)
+    except Exception:
+        logger.warning(
+            "SEED_ADMIN_EMAIL=%r is not a valid login email (same rules as /api/auth/login); "
+            "use an address with a normal domain, e.g. admin@example.com. Skipping seed.",
+            email,
+        )
         return
     if len(password) < 8:
         logger.warning(
